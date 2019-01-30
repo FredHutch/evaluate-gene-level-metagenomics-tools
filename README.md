@@ -32,3 +32,11 @@ We hope to achieve reproducibility by building this evaluation with Cromwell,
 a workflow management system that coordinates the execution of commands within
 Docker containers and the exchange of data objects between those tasks. More 
 details on Cromwell [here](http://cromwell.readthedocs.io).
+
+
+### Other Resources
+
+Many of the tools used in this evaluation are written as Cromwell tasks within the ongoing
+project for [reproducible workflows at Fred Hutch](https://github.com/FredHutch/reproducible-workflows).
+
+Useful tool for visualizing Cromwell workflows: [http://pb.opensource.epam.com/](http://pb.opensource.epam.com/)
