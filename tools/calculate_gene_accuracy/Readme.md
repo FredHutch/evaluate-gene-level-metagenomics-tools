@@ -37,7 +37,9 @@ of genes that are truly present
 
 Each metric can be calculated for the mock communities overall, or for the set of
 genes that are simulated with a depth falling within a certain range (to get at the
-question of limit of detection).
+question of limit of detection). The output of this tool will just be the number of
+TP, FP, FN, and DUP, so that the downstream summary metrics can take into account
+the fact that different levels of sequencing will have different numbers of genes.
 
 ### Inputs
 
@@ -49,13 +51,13 @@ question of limit of detection).
 
 JSON file with the set of accuracy metrics, broken up by sequencing depth, e.g.:
 
-| method | depth | sensitivity | precision | uniqueness |
-| ------ | ----- | ----------- | --------- | ---------- |
-| famli  | all   | 0.8         | 0.9       | 0.95       |
-| famli  | 0.1   | 0.5         | 0.8       | 0.9        |
-| famli  | 0.7   | 0.8         | 0.85      | 0.925      |
-| famli  | 1.2   | 0.99        | 0.95      | 0.8        |
-| plass  | all   | 0.9         | 0.8       | 0.99       |
-| plass  | 0.1   | 0.6         | 0.7       | 0.8        |
-| plass  | 0.7   | 0.9         | 0.75      | 0.905      |
-| plass  | 1.2   | 0.95        | 0.85      | 0.8        |
+| method | depth | true_positive | false_negative | false_positive | duplicate |
+| ------ | ----- | ------------- | -------------- | -------------- | --------- |
+| famli  | all   |               |                | 50             |           |
+| famli  | 0.1   | 100           | 10             |                | 1         |
+| famli  | 0.7   | 200           | 15             |                | 3         |
+| famli  | 1.2   | 1000          | 30             |                | 20        |
+| plass  | all   |               |                | 10             |           |
+| plass  | 0.1   | 90            | 5              |                | 0         |
+| plass  | 0.7   | 180           | 7              |                | 1         |
+| plass  | 1.2   | 980           | 14             |                | 3         |
