@@ -1,0 +1,1 @@
+java -Dconfig.file=$HOME/.cromwell/local.conf -jar $HOME/.cromwell/cromwell-36.jar run make_unique_fasta_headers.wdl -i make_unique_fasta_headers.inputs.json
