@@ -1,0 +1,5 @@
+{
+    "calculateGeneAccuracy_wf.ref_fasta": "test_data/refdb.fasta.gz",
+    "calculateGeneAccuracy_wf.ref_abund": "test_data/refdb.abund.csv",
+    "calculateGeneAccuracy_wf.detected_fasta": "test_data/detected.fasta.gz"
+}

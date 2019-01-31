@@ -1,0 +1,1 @@
+java -Dconfig.file=$HOME/.cromwell/local.conf -jar $HOME/.cromwell/cromwell-36.jar run calculate_gene_accuracy.wdl -i calculate_gene_accuracy.inputs.json
