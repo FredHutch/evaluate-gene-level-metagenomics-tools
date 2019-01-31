@@ -1,4 +1,5 @@
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/1288836ffeb21f3939249e712b59774567ffc11c/WDL/align-proteins-diamond/align-proteins-diamond.wdl" as dmd
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/86ee57e3cb8234bee734652b0f93fb10f8fba7ba/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl?token=AE-VSF9RE3XNpRsIhI9h2sU4ocNuBZ8kks5cXKzVwA" as unique_fasta
 
 workflow calculateGeneAccuracy_wf {
 
@@ -11,22 +12,27 @@ workflow calculateGeneAccuracy_wf {
       fasta=ref_fasta
   }
 
+  call unique_fasta.makeUniqueFastaHeaders {
+    input:
+      fasta_input=detected_fasta
+  }
+
   call dmd.RunDiamond {
     input:
       db=MakeDiamondDatabase.db,
-      query=detected_fasta
+      query=makeUniqueFastaHeaders.fasta_output
   }
 
   call calculateGeneAccuracy {
     input:
-      detected_fasta=detected_fasta,
+      detected_fasta=makeUniqueFastaHeaders.fasta_output,
       aln=RunDiamond.aln,
       ref_abund=ref_abund,
       method_label="dummy_method"
   }
   
   output {
-    File aln=calculateGeneAccuracy.accuracy
+    File accuracy=calculateGeneAccuracy.accuracy
   }
 
 }
