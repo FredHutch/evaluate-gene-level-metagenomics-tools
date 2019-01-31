@@ -1,0 +1,4 @@
+{
+    "extractDetectedGenesFAMLI_wf.json_input": "test_data/famli_results.json.gz",
+    "extractDetectedGenesFAMLI_wf.fasta_input": "test_data/refdb.fasta.gz"
+}
