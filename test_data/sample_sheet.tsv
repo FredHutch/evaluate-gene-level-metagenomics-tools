@@ -1,0 +1,3 @@
+sim_reads	ref_fasta	ref_abund
+test_data/SRR3732371.fastq.gz	test_data/SRR3732371.faa.gz	test_data/SRR3732371.abund.csv
+test_data/SRR3732372.fastq.gz	test_data/SRR3732372.faa.gz	test_data/SRR3732372.abund.csv
