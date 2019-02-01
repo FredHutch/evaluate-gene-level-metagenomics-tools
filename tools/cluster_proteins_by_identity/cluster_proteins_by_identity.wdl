@@ -2,20 +2,12 @@ workflow clusterProteinsAbunds {
 
   File ref_fasta_in
   File ref_abund_in
-  File detected_fasta_in
   String identity="0.9"
   String overlap="0.9"
 
-  call clusterProteins as cluster_ref {
+  call clusterProteins {
     input:
       fasta_in=ref_fasta_in,
-      identity=identity,
-      overlap=overlap
-  }
-
-  call clusterProteins as cluster_det {
-    input: 
-      fasta_in=detected_fasta_in,
       identity=identity,
       overlap=overlap
   }
@@ -23,14 +15,13 @@ workflow clusterProteinsAbunds {
   call clusterAbund {
     input:
       abund_in=ref_abund_in,
-      groups=cluster_ref.tsv_out,
+      groups=clusterProteins.tsv_out,
       identity=identity
   }
 
   output {
-    File ref_fasta_out=cluster_ref.fasta_out
+    File ref_fasta_out=clusterProteins.fasta_out
     File ref_abund_out=clusterAbund.abund_out
-    File detected_fasta_out=cluster_det.fasta_out
   }
 
 }
