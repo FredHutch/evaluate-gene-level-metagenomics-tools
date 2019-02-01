@@ -1,4 +1,4 @@
 {
-    "clusterProteinsAbunds.ref_fasta_in": "test_data/refdb.fasta.gz",
-    "clusterProteinsAbunds.ref_abund_in": "test_data/refdb.abund.csv"
+    "clusterProteinsAbunds.fasta_in": "test_data/refdb.fasta.gz",
+    "clusterProteinsAbunds.abund_in": "test_data/refdb.abund.csv"
 }
