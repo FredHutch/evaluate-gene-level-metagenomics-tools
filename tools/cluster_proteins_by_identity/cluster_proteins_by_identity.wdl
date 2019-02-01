@@ -72,16 +72,23 @@ task clusterAbund {
     python << END
 
 from collections import defaultdict
+import gzip
+
+def gzip_safe_open(fp, mode="rt"):
+    if fp.endswith(".gz"):
+        return gzip.open(fp, mode)
+    else:
+        return open(fp, mode)
 
 # Read in the cluster membership
 clusters = dict([
   line.rstrip("\n").split("\t")[:2]
-  for line in open("${groups}", "rt")
+  for line in gzip_safe_open("${groups}")
 ])
 
 # Add up the abundances for each cluster
 clust_abund = defaultdict(float)
-for line in open("${abund_in}", "rt"):
+for line in gzip_safe_open("${abund_in}"):
     if ',' not in line:
         continue
     member, abund = line.rstrip("\n").split(",", 2)[:2]
