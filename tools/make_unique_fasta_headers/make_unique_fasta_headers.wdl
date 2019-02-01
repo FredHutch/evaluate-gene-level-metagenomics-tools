@@ -16,7 +16,7 @@ workflow makeUniqueFastaHeaders_wf {
 task makeUniqueFastaHeaders {
 
   File fasta_input
-  String sample_base = basename(fasta_input, ".fasta.gz")
+  String sample_base = basename(fasta_input, ".gz")
 
   runtime {
     docker: "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
@@ -40,18 +40,18 @@ def make_new_name(n):
         ix += 1
     return n + "_" + str(ix)
 
-with open("${sample_base}.fasta", "wt") as fo:
+with open("TEMP", "wt") as fo:
     for header, seq in SimpleFastaParser(gzip.open("${fasta_input}", "rt")):
         header = make_new_name(header)
         fo.write(">" + header + "\n" + seq + "\n")
         written_genes.add(header)
 
 END
-
-    gzip ${sample_base}.fasta
+    mv TEMP "${sample_base}"
+    gzip "${sample_base}"
 
   }
   output {
-    File fasta_output = "${sample_base}.fasta.gz"
+    File fasta_output = "${sample_base}.gz"
   }
 }
