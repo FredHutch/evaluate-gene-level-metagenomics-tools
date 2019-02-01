@@ -28,6 +28,8 @@ task extractDetectedGenesFAMLI {
   }
 
   command {
+    set -e
+
     python3 << END
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 import gzip
@@ -52,6 +54,8 @@ with open("${sample_base}.fasta", "wt") as fo:
 assert len(written_genes) == len(detected_genes), "Not all genes were found in the input"
 
 END
+
+    (( $(cat ${sample_base}.fasta | wc -l) > 1 ))
 
     gzip ${sample_base}.fasta
 
