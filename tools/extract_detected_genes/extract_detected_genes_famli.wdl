@@ -41,10 +41,16 @@ detected_genes = set([
     for r in json.load(gzip.open("${json_input}", "rt"))
 ])
 
+def gzip_safe_open(fp, mode="rt"):
+    if fp.endswith(".gz"):
+        return gzip.open(fp, mode)
+    else:
+        return open(fp, mode)
+
 written_genes = set([])
 
 with open("${sample_base}.fasta", "wt") as fo:
-    for header, seq in SimpleFastaParser(gzip.open("${fasta_input}", "rt")):
+    for header, seq in SimpleFastaParser(gzip_safe_open("${fasta_input}")):
         header = header.split(" ")[0]
         if header in detected_genes:
             assert header not in written_genes, "Duplicate gene names"
