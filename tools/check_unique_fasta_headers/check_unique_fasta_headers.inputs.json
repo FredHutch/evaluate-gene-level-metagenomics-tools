@@ -1,0 +1,3 @@
+{
+    "checkUniqueFastaHeaders_wf.fasta_input": "test_data/refdb.fasta.gz"
+}
