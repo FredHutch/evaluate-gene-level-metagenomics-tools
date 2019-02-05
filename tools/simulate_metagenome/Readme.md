@@ -9,8 +9,7 @@ arbitrary number of genomes selected randomly from RefSeq, with
 abundances simulated randomly from a log-normal distribution.
 
 The actual read simulations will be done with ART, and the genes
-present in each genome will be ascertained directly from the RefSeq
-annotations.
+present in each genome will be annotated with Prokka.
 
 
 ### Input
@@ -35,3 +34,5 @@ O'Leary NA, Wright MW, Brister JR, Ciufo S, Haddad D, McVeigh R, Rajput B, Robbe
 Tatusova T, DiCuccio M, Badretdin A, Chetvernin V, Nawrocki EP, Zaslavsky L, Lomsadze A, Pruitt KD, Borodovsky M, Ostell J. NCBI prokaryotic genome annotation pipeline. Nucleic Acids Res. 2016 Aug 19;44(14):6614-24
 
 Weichun Huang, Leping Li, Jason R Myers, and Gabor T Marth. ART: a next-generation sequencing read simulator, Bioinformatics (2012) 28 (4): 593-594
+
+Seemann T (2014) Prokka: rapid prokaryotic genome annotation. Bioinformatics. 30(14):2068-9

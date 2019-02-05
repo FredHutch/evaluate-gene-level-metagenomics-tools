@@ -1,0 +1,6 @@
+{
+    "SimulateMetagenome.genome_list": "test_data/test_genomes.csv.gz",
+    "SimulateMetagenome.mean_depth": "0.1",
+    "SimulateMetagenome.num_metagenomes": "2",
+    "SimulateMetagenome.num_genomes": "2"
+}

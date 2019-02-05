@@ -1,0 +1,1 @@
+java -Dconfig.file=$HOME/.cromwell/local.conf -jar $HOME/.cromwell/cromwell-36.jar run simulate_metagenome.wdl -i simulate_metagenome.inputs.json
