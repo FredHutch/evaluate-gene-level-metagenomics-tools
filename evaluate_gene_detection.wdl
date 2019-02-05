@@ -4,19 +4,30 @@ import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metageno
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1f26244639445b030282c63d60ed4f9d5365a179/tools/extract_detected_genes/extract_detected_genes_famli.wdl?token=AE-VSN7aw0nY2XpbGuT3ZEdMkFbVTqPaks5cXiLrwA" as extract_famli_genes
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/be533c85a18a7807313f84518f80a857bdfd6fd4/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl?token=AE-VSOKDLxrQh5a8n42Do3DhQNFY5tREks5cXh9LwA" as clean_headers
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/5dfcafb254884d132480a0a470d42190695c6b3c/tools/cluster_proteins_by_identity/cluster_proteins_by_identity.wdl?token=AE-VSPdWLIiGQWDCprmvobg8NMGKhksdks5cXiI8wA" as clust
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/bad7b3799dd1f6282fea494b920eed76330b7246/tools/simulate_metagenome/simulate_metagenome.wdl?token=AE-VSPMAlu8H-2eGh9CWNfqmrHxwfDelks5cY0TTwA" as sim
 
 workflow evaluateGeneDetection {
 
-  File sample_sheet
+  File genome_list
+  Int num_metagenomes = 5
+  String num_genomes = "100"
+  String mean_depth = "1"
   String identity="0.9"
-  Array[Object] samples = read_objects(sample_sheet)
 
-  scatter (sample in samples) {
+  call sim.SimulateMetagenome as sim_meta {
+    input:
+      genome_list=genome_list,
+      num_metagenomes=num_metagenomes,
+      num_genomes=num_genomes,
+      mean_depth=mean_depth
+  }
+
+  scatter (ix in range(num_metagenomes)){
     
     # Run Plass
     call plass.plass {
       input:
-        input_fastq=sample.sim_reads
+        input_fastq=sim_meta.reads_fastq[ix]
     }
     # Make the headers unique
     call clean_headers.makeUniqueFastaHeaders as plass_clean {
@@ -33,8 +44,8 @@ workflow evaluateGeneDetection {
     # Cluster the reference proteins
     call clust.clusterProteinsAbunds as ref_clust {
       input:
-        fasta_in=sample.ref_fasta,
-        abund_in=sample.ref_abund,
+        fasta_in=sim_meta.genes_fastp[ix],
+        abund_in=sim_meta.abund_csv[ix],
         identity=identity
     }
 
@@ -57,7 +68,7 @@ workflow evaluateGeneDetection {
     call famli.DiamondBlastx {
       input:
         refdb=MakeDiamondDatabase.db,
-        input_fastq=sample.sim_reads
+        input_fastq=sim_meta.reads_fastq[ix]
     }
 
     # Filter the results with FAMLI
