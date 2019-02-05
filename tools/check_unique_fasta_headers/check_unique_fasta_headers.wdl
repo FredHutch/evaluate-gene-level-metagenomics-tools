@@ -25,6 +25,8 @@ task checkUniqueFastaHeaders {
   }
 
   command {
+    set -e
+    
     python3 << END
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 import gzip

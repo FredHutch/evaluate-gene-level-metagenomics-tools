@@ -76,6 +76,8 @@ task clusterAbund {
   }
 
   command {
+    set -e
+    
     python << END
 
 from collections import defaultdict
