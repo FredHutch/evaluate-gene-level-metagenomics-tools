@@ -1,6 +1,6 @@
 {
     "evaluateGeneDetection.genome_list": "test_data/test_genomes.csv.gz",
-    "evaluateGeneDetection.mean_depth": "0.1",
+    "evaluateGeneDetection.mean_depth": "1",
     "evaluateGeneDetection.num_metagenomes": "2",
     "evaluateGeneDetection.num_genomes": "2"
 }

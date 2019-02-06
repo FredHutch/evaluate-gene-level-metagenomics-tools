@@ -1,0 +1,6 @@
+{
+    "evaluateGeneDetection.genome_list": "s3://fh-ctr-public-reference-data/genome_data/microbial/ncbi/genomes/2019-02-05-NCBI-Genomes-Prokaryotes-Viruses.csv.gz",
+    "evaluateGeneDetection.mean_depth": "1",
+    "evaluateGeneDetection.num_metagenomes": "10",
+    "evaluateGeneDetection.num_genomes": "10"
+}
