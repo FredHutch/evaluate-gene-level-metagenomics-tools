@@ -1,6 +1,7 @@
 {
     "evaluateGeneDetection.genome_list": "test_data/test_genomes.csv.gz",
-    "evaluateGeneDetection.mean_depth": "1",
+    "evaluateGeneDetection.mean_depth": "50",
+    "evaluateGeneDetection.max_depth": "5",
     "evaluateGeneDetection.num_metagenomes": "2",
     "evaluateGeneDetection.num_genomes": "2",
     "evaluateGeneDetection.memory": "4G",

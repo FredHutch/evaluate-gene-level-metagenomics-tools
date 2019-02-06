@@ -1,4 +1,4 @@
-import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/77dcf3de35d4e2d8d11810762a37e88880001176/WDL/denovo-assembly-plass/denovo-assembly-plass.wdl" as plass
+import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/da9ceed56e63574c2562c947021a85992f4272bd/WDL/denovo-assembly-plass/denovo-assembly-plass.wdl" as plass
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/3c4d7f3f5125b93981315e1c3202dce4952e5fcd/WDL/align-proteins-famli/align-proteins-famli.wdl" as famli
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1a4791d42b50b4fb87b445a5999cb193651a6693/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl?token=AE-VSEiy1FYZRGNLtRVAC2o-hcYnRHK7ks5cXeX4wA" as calc_acc
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1f26244639445b030282c63d60ed4f9d5365a179/tools/extract_detected_genes/extract_detected_genes_famli.wdl?token=AE-VSN7aw0nY2XpbGuT3ZEdMkFbVTqPaks5cXiLrwA" as extract_famli_genes
@@ -32,6 +32,7 @@ workflow evaluateGeneDetection {
     call plass.plass {
       input:
         input_fastq=sim_meta.reads_fastq[ix],
+        translation_table="11",
         memory=memory,
         cpu=cpu
     }
