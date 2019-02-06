@@ -75,7 +75,6 @@ workflow evaluateGeneDetection {
       input:
         refdb=MakeDiamondDatabase.db,
         input_fastq=sim_meta.reads_fastq[ix],
-        memory=memory,
         cpu=cpu
     }
 
