@@ -6,6 +6,7 @@ workflow SimulateMetagenome {
   Int num_metagenomes = 5
   String num_genomes = "100"
   String mean_depth = "1"
+  String max_depth = "20"
   
   scatter (ix in range(num_metagenomes)){
 
@@ -14,6 +15,7 @@ workflow SimulateMetagenome {
         genome_list=genome_list,
         num_genomes=num_genomes,
         mean_depth=mean_depth,
+        max_depth=max_depth,
         random_seed=ix
     }
 
@@ -248,6 +250,7 @@ task PickGenomeAbundances {
   File genome_list
   String num_genomes = "100"
   String mean_depth = "1"
+  String max_depth = "20"
   String sep=","
   String random_seed = "1"
   String log_std = "2"
@@ -305,7 +308,7 @@ abund_list = np.random.normal(
 
 # Transform back to linear space
 abund_list = [
-  10**x
+  min(10**x, ${max_depth})
   for x in abund_list
 ]
 
