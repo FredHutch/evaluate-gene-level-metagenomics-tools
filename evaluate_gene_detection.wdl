@@ -13,6 +13,8 @@ workflow evaluateGeneDetection {
   String num_genomes = "100"
   String mean_depth = "1"
   String identity="0.9"
+  String memory="16G"
+  String cpu="32"
 
   call sim.SimulateMetagenome as sim_meta {
     input:
@@ -27,7 +29,9 @@ workflow evaluateGeneDetection {
     # Run Plass
     call plass.plass {
       input:
-        input_fastq=sim_meta.reads_fastq[ix]
+        input_fastq=sim_meta.reads_fastq[ix],
+        memory=memory,
+        cpu=cpu
     }
     # Make the headers unique
     call clean_headers.makeUniqueFastaHeaders as plass_clean {
@@ -68,13 +72,16 @@ workflow evaluateGeneDetection {
     call famli.DiamondBlastx {
       input:
         refdb=MakeDiamondDatabase.db,
-        input_fastq=sim_meta.reads_fastq[ix]
+        input_fastq=sim_meta.reads_fastq[ix],
+        memory=memory,
+        cpu=cpu
     }
 
     # Filter the results with FAMLI
     call famli.FAMLI {
       input:
-        input_aln=DiamondBlastx.aln
+        input_aln=DiamondBlastx.aln,
+        cpu=cpu
     }
 
     # Extract the genes detected by FAMLI
