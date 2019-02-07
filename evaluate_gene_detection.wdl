@@ -135,13 +135,63 @@ workflow evaluateGeneDetection {
 
   }
 
-  output {
-    Array[File] plass=plass_calc.accuracy
-    Array[File] famli=famli_calc.accuracy
-    Array[File] all_diamond=allDiamond_calc.accuracy
-    Array[File] unique_diamond=uniqueDiamond_calc.accuracy
+  call AggregateResults {
+    input:
+      plass=plass_calc.accuracy,
+      famli=famli_calc.accuracy,
+      all_diamond=allDiamond_calc.accuracy,
+      unique_diamond=uniqueDiamond_calc.accuracy
   }
 
+  output {
+    AggregateResults.results
+  }
+
+}
+
+task AggregateResults {
+  Array[File] plass
+  Array[File] famli
+  Array[File] all_diamond
+  Array[File] unique_diamond
+
+  runtime {
+    docker: "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
+    memory: "1G"
+    cpu: "1"
+  }
+
+  command {
+    set -e;
+
+    python << END
+import pandas as pd
+
+plass = ['${sep="', '" plass}']
+famli = ['${sep="', '" famli}']
+all_diamond = ['${sep="', '" all_diamond}']
+unique_diamond = ['${sep="', '" unique_diamond}']
+
+assert len(famli) == len(plass)
+assert len(all_diamond) == len(plass)
+assert len(unique_diamond) == len(plass)
+
+output = []
+
+for ix, fp_arr in enumerate(zip(plass, famli, all_diamond, unique_diamond)):
+    for fp in fp_arr:
+        df = pd.read_table(fp)
+        df["shard"] = ix
+        output.append(df)
+
+output = pd.concat(output)
+output.to_csv("results.csv", index=False)
+END
+  }
+
+  output {
+    File results = "results.csv"
+  }
 }
 
 task allDiamondGenes{
