@@ -1,4 +1,6 @@
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/0b77bb3af87598ea2e497410370032a21fca4b95/WDL/denovo-assembly-plass/denovo-assembly-plass.wdl" as plass
+import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/denovo-assembly-metaspades/denovo-assembly-metaspades.wdl" as metaspades
+import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/genome-annotation-prokka/genome-annotation-prokka.wdl" as prokka
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/3c4d7f3f5125b93981315e1c3202dce4952e5fcd/WDL/align-proteins-famli/align-proteins-famli.wdl" as famli
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1a4791d42b50b4fb87b445a5999cb193651a6693/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl?token=AE-VSEiy1FYZRGNLtRVAC2o-hcYnRHK7ks5cXeX4wA" as calc_acc
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1f26244639445b030282c63d60ed4f9d5365a179/tools/extract_detected_genes/extract_detected_genes_famli.wdl?token=AE-VSN7aw0nY2XpbGuT3ZEdMkFbVTqPaks5cXiLrwA" as extract_famli_genes
@@ -28,8 +30,10 @@ workflow evaluateGeneDetection {
   }
 
   scatter (ix in range(num_metagenomes)){
-    
-    # Run Plass
+
+    #########
+    # PLASS #
+    #########
     call plass.plass {
       input:
         input_fastq=sim_meta.reads_fastq[ix],
@@ -67,6 +71,46 @@ workflow evaluateGeneDetection {
         method_label="Plass"
     }
 
+
+    ##############
+    # metaSPAdes #
+    ##############
+    call metaspades.metaspades {
+      input:
+        input_fastq=sim_meta.reads_fastq[ix],
+        memory=memory,
+        cpu=cpu
+    }
+    # Annotate genes in those contigs
+    call prokka.prokka as metaspades_prokka {
+      input:
+        input_fasta=metaspades.contigs,
+        memory=memory,
+        cpu=cpu
+    }
+    # Make the headers unique
+    call clean_headers.makeUniqueFastaHeaders as metaspades_clean {
+      input:
+        fasta_input=metaspades_prokka.faa
+    }
+    # Cluster the metaSPAdes-detected proteins
+    call clust.clusterProteins as metaspades_clust {
+      input:
+        fasta_in=metaspades_clean.fasta_output,
+        identity=identity
+    }
+    # Calculate accuracy
+    call calc_acc.calculateGeneAccuracy as metaspades_calc {
+      input:
+        ref_fasta=ref_clust.fasta_out,
+        ref_abund=ref_clust.abund_out,
+        detected_fasta=metaspades_clust.fasta_out,
+        method_label="metaSPAdes"
+    }
+
+    ###########
+    # DIAMOND #
+    ###########
     # Now run DIAMOND on those clustered proteins
     # Make the database
     call famli.MakeDiamondDatabase {
@@ -81,6 +125,9 @@ workflow evaluateGeneDetection {
         cpu=cpu
     }
 
+    #########
+    # FAMLI #
+    #########
     # Filter the results with FAMLI
     call famli.FAMLI {
       input:
@@ -103,6 +150,9 @@ workflow evaluateGeneDetection {
         method_label="FAMLI"
     }
 
+    ###############
+    # All DIAMOND #
+    ###############
     # Extract the set of genes which DIAMOND aligns any read to
     call allDiamondGenes {
       input:
@@ -118,6 +168,9 @@ workflow evaluateGeneDetection {
         method_label="All DIAMOND"
     }
 
+    ##################
+    # Unique DIAMOND #
+    ##################
     # Extract the set of genes which DIAMOND aligns any read to UNIQUELY
     call uniqueDiamondGenes {
       input:
@@ -138,6 +191,7 @@ workflow evaluateGeneDetection {
   call AggregateResults {
     input:
       plass=plass_calc.accuracy,
+      metaspades=metaspades_calc.accuracy,
       famli=famli_calc.accuracy,
       all_diamond=allDiamond_calc.accuracy,
       unique_diamond=uniqueDiamond_calc.accuracy
@@ -151,6 +205,7 @@ workflow evaluateGeneDetection {
 
 task AggregateResults {
   Array[File] plass
+  Array[File] metaspades
   Array[File] famli
   Array[File] all_diamond
   Array[File] unique_diamond
@@ -168,6 +223,7 @@ task AggregateResults {
 import pandas as pd
 
 plass = ['${sep="', '" plass}']
+metaspades = ['${sep="', '" metaspades}']
 famli = ['${sep="', '" famli}']
 all_diamond = ['${sep="', '" all_diamond}']
 unique_diamond = ['${sep="', '" unique_diamond}']
@@ -178,7 +234,13 @@ assert len(unique_diamond) == len(plass)
 
 output = []
 
-for ix, fp_arr in enumerate(zip(plass, famli, all_diamond, unique_diamond)):
+for ix, fp_arr in enumerate(zip(
+  plass,
+  metaspades,
+  famli,
+  all_diamond,
+  unique_diamond
+)):
     for fp in fp_arr:
         df = pd.read_table(fp)
         df["shard"] = ix
