@@ -1,4 +1,4 @@
-import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/da9ceed56e63574c2562c947021a85992f4272bd/WDL/denovo-assembly-plass/denovo-assembly-plass.wdl" as plass
+import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/0b77bb3af87598ea2e497410370032a21fca4b95/WDL/denovo-assembly-plass/denovo-assembly-plass.wdl" as plass
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/3c4d7f3f5125b93981315e1c3202dce4952e5fcd/WDL/align-proteins-famli/align-proteins-famli.wdl" as famli
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1a4791d42b50b4fb87b445a5999cb193651a6693/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl?token=AE-VSEiy1FYZRGNLtRVAC2o-hcYnRHK7ks5cXeX4wA" as calc_acc
 import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1f26244639445b030282c63d60ed4f9d5365a179/tools/extract_detected_genes/extract_detected_genes_famli.wdl?token=AE-VSN7aw0nY2XpbGuT3ZEdMkFbVTqPaks5cXiLrwA" as extract_famli_genes
@@ -16,6 +16,7 @@ workflow evaluateGeneDetection {
   String identity="0.9"
   String memory="16G"
   String cpu="32"
+  String plass_min_orf_length="20"
 
   call sim.SimulateMetagenome as sim_meta {
     input:
@@ -33,6 +34,7 @@ workflow evaluateGeneDetection {
       input:
         input_fastq=sim_meta.reads_fastq[ix],
         translation_table="11",
+        min_orf_length=plass_min_orf_length,
         memory=memory,
         cpu=cpu
     }
