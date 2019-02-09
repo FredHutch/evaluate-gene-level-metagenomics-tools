@@ -1,5 +1,5 @@
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/1288836ffeb21f3939249e712b59774567ffc11c/WDL/align-proteins-diamond/align-proteins-diamond.wdl" as dmd
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/check_unique_fasta_headers/check_unique_fasta_headers.wdl" as check_headers
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/check_unique_fasta_headers/check_unique_fasta_headers.wdl" as check_headers
 
 workflow calculateGeneAccuracy {
 

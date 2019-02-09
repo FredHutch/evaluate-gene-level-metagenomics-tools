@@ -1,4 +1,4 @@
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/be533c85a18a7807313f84518f80a857bdfd6fd4/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl" as clean_headers
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl" as clean_headers
 
 workflow SimulateMetagenome {
 

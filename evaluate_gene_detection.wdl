@@ -3,11 +3,11 @@ import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d360
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/denovo-assembly-megahit/denovo-assembly-megahit.wdl" as megahit
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/genome-annotation-prokka/genome-annotation-prokka.wdl" as prokka
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/3c4d7f3f5125b93981315e1c3202dce4952e5fcd/WDL/align-proteins-famli/align-proteins-famli.wdl" as famli
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl" as calc_acc
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/extract_detected_genes/extract_detected_genes_famli.wdl" as extract_famli_genes
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl" as clean_headers
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/cluster_proteins_by_identity/cluster_proteins_by_identity.wdl" as clust
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/simulate_metagenome/simulate_metagenome.wdl" as sim
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl" as calc_acc
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/extract_detected_genes/extract_detected_genes_famli.wdl" as extract_famli_genes
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl" as clean_headers
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/cluster_proteins_by_identity/cluster_proteins_by_identity.wdl" as clust
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e239d79b1c528515ca3331c2e2339847d254ae37/tools/simulate_metagenome/simulate_metagenome.wdl" as sim
 
 workflow evaluateGeneDetection {
 
