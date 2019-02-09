@@ -1,12 +1,13 @@
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/0b77bb3af87598ea2e497410370032a21fca4b95/WDL/denovo-assembly-plass/denovo-assembly-plass.wdl" as plass
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/denovo-assembly-metaspades/denovo-assembly-metaspades.wdl" as metaspades
+import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/denovo-assembly-megahit/denovo-assembly-megahit.wdl" as megahit
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/2d3602030c21841935543c1124ecc3beca638c71/WDL/genome-annotation-prokka/genome-annotation-prokka.wdl" as prokka
 import "https://raw.githubusercontent.com/FredHutch/reproducible-workflows/3c4d7f3f5125b93981315e1c3202dce4952e5fcd/WDL/align-proteins-famli/align-proteins-famli.wdl" as famli
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1a4791d42b50b4fb87b445a5999cb193651a6693/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl?token=AE-VSEiy1FYZRGNLtRVAC2o-hcYnRHK7ks5cXeX4wA" as calc_acc
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/1f26244639445b030282c63d60ed4f9d5365a179/tools/extract_detected_genes/extract_detected_genes_famli.wdl?token=AE-VSN7aw0nY2XpbGuT3ZEdMkFbVTqPaks5cXiLrwA" as extract_famli_genes
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/be533c85a18a7807313f84518f80a857bdfd6fd4/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl?token=AE-VSOKDLxrQh5a8n42Do3DhQNFY5tREks5cXh9LwA" as clean_headers
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/5dfcafb254884d132480a0a470d42190695c6b3c/tools/cluster_proteins_by_identity/cluster_proteins_by_identity.wdl?token=AE-VSPdWLIiGQWDCprmvobg8NMGKhksdks5cXiI8wA" as clust
-import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/e734a480671fe586f5efd44570bede9839c48351/tools/simulate_metagenome/simulate_metagenome.wdl?token=AE-VSHGgJIcYBtJ39Ief4u547Vo7-2ZNks5cZF3lwA" as sim
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/calculate_gene_accuracy/calculate_gene_accuracy.wdl?token=AE-VSLHdV_yl4Uqjz_magRzRBI9iJI7aks5caE1nwA%3D%3D" as calc_acc
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/extract_detected_genes/extract_detected_genes_famli.wdl?token=AE-VSO2lwCGILcrnBOV_8VHtHjOYpJKdks5caE15wA%3D%3D" as extract_famli_genes
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/make_unique_fasta_headers/make_unique_fasta_headers.wdl?token=AE-VSEy1DCdQ_SzwnItVeu56K-3k9E_qks5caE2KwA%3D%3D" as clean_headers
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/cluster_proteins_by_identity/cluster_proteins_by_identity.wdl?token=AE-VSKPGno4SOZmoIYtc0I1GC6mxaZG3ks5caE2awA%3D%3D" as clust
+import "https://raw.githubusercontent.com/FredHutch/evaluate-gene-level-metagenomics-tools/106f33a40faec5bdede8a60f3b9829f35dbe935e/tools/simulate_metagenome/simulate_metagenome.wdl?token=AE-VSIHACmgU1WxR7J23r_WrTYRl7WGxks5caE2pwA%3D%3D" as sim
 
 workflow evaluateGeneDetection {
 
@@ -108,6 +109,42 @@ workflow evaluateGeneDetection {
         method_label="metaSPAdes"
     }
 
+    ##############
+    # MEGAHIT #
+    ##############
+    call megahit.megahit {
+      input:
+        input_fastq=sim_meta.reads_fastq[ix],
+        memory=memory,
+        cpu=cpu
+    }
+    # Annotate genes in those contigs
+    call prokka.prokka as megahit_prokka {
+      input:
+        input_fasta=megahit.contigs,
+        memory=memory,
+        cpu=cpu
+    }
+    # Make the headers unique
+    call clean_headers.makeUniqueFastaHeaders as megahit_clean {
+      input:
+        fasta_input=megahit_prokka.faa
+    }
+    # Cluster the megahit-detected proteins
+    call clust.clusterProteins as megahit_clust {
+      input:
+        fasta_in=megahit_clean.fasta_output,
+        identity=identity
+    }
+    # Calculate accuracy
+    call calc_acc.calculateGeneAccuracy as megahit_calc {
+      input:
+        ref_fasta=ref_clust.fasta_out,
+        ref_abund=ref_clust.abund_out,
+        detected_fasta=megahit_clust.fasta_out,
+        method_label="megahit"
+    }
+
     ###########
     # DIAMOND #
     ###########
@@ -192,6 +229,7 @@ workflow evaluateGeneDetection {
     input:
       plass=plass_calc.accuracy,
       metaspades=metaspades_calc.accuracy,
+      megahit=megahit_calc.accuracy,
       famli=famli_calc.accuracy,
       all_diamond=allDiamond_calc.accuracy,
       unique_diamond=uniqueDiamond_calc.accuracy
@@ -206,6 +244,7 @@ workflow evaluateGeneDetection {
 task AggregateResults {
   Array[File] plass
   Array[File] metaspades
+  Array[File] megahit
   Array[File] famli
   Array[File] all_diamond
   Array[File] unique_diamond
@@ -224,6 +263,7 @@ import pandas as pd
 
 plass = ['${sep="', '" plass}']
 metaspades = ['${sep="', '" metaspades}']
+megahit = ['${sep="', '" megahit}']
 famli = ['${sep="', '" famli}']
 all_diamond = ['${sep="', '" all_diamond}']
 unique_diamond = ['${sep="', '" unique_diamond}']
@@ -237,6 +277,7 @@ output = []
 for ix, fp_arr in enumerate(zip(
   plass,
   metaspades,
+  megahit,
   famli,
   all_diamond,
   unique_diamond
