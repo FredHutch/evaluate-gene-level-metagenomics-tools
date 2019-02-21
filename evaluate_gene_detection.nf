@@ -17,6 +17,10 @@ params.overlap = 0.5
 params.top_pct = 0
 params.output_folder = "accuracy_results/"
 
+//
+// SIMULATE MOCK COMMUNITIES
+//
+
 process pick_genome_abundances {
 
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
@@ -110,6 +114,10 @@ process make_gene_abundances {
     template "make_gene_abundances.sh"
 }
 
+//
+// RUN PLASS
+//
+
 process plass {
     // container "quay.io/biocontainers/plass@sha256:c771c791ad89d9f2c09720d7e127d5b0e6ee2a35ca7688a1b79c461c116ddd05"
     container "soedinglab/plass"
@@ -165,6 +173,10 @@ process plass_cluster {
 
 }
 
+//
+// CLUSTER THE REFERENCE SEQUENCES
+//
+
 process ref_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 1
@@ -216,6 +228,10 @@ process ref_cluster_dmnd {
     diamond makedb --in ${fasta} --db ${fasta}.db.dmnd
     """
 }
+
+//
+// CALCULATE THE ACCURACY OF PLASS RESULTS
+//
 
 process align_plass_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
