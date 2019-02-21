@@ -24,15 +24,14 @@ def gzip_safe_open(fp, mode="rt"):
         return open(fp, mode)
 
 ix = 0
-with open("TEMP", "wt") as fo:
+with open("${fasta_input}.clean.fasta", "wt") as fo:
     for header, seq in SimpleFastaParser(gzip_safe_open("${fasta_input}", "rt")):
         ix += 1
         header = make_new_name(header)
-        fo.write(">" + header + "\n" + seq + "\n")
+        fo.write(">" + header + "\\n" + seq + "\\n")
         written_genes.add(header)
 assert ix > 0, "No sequences were found"
 
 END
 
-mv TEMP "${sample_base}"
-gzip "${sample_base}"
+gzip "${fasta_input}.clean.fasta"

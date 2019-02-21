@@ -7,18 +7,24 @@ python << END
 import gzip
 import pandas as pd
 
+def gzip_safe_open(fp, mode="rt"):
+    if fp.endswith(".gz"):
+        return gzip.open(fp, mode)
+    else:
+        return open(fp, mode)
+
 # Read in the table with the depth for each reference protein
-ref_abund = pd.read_table("${ref_abund}", sep=",", header=None)
+ref_abund = pd.read_csv("${ref_abund}", sep=",", header=None)
 
 # Read in the list of detected genes
 detected_genes = set([
-    header[1:].split(" ")[0].rstrip("\n")
-    for header in gzip.open("${detected_fasta}", "rt")
+    header[1:].split(" ")[0].rstrip("\\n")
+    for header in gzip_safe_open("${detected_fasta}")
     if header[0] == ">"
 ])
 
 # Read in the set of alignments
-aln = pd.read_table("${aln}", sep="\t", header=None)
+aln = pd.read_csv("${aln}", sep="\t", header=None)
 
 # Make sure there are >0 rows
 assert aln.shape[0] > 0
@@ -39,6 +45,7 @@ output = []
 
 output.append(dict([
     ("method", "${method_label}"),
+    ("random_seed", "${random_seed}"),
     ("depth", "all"),
     ("false_positive", len(detected_genes) - aln[0].isin(detected_genes).sum())
 ]))
@@ -51,6 +58,7 @@ for d, df in ref_abund.groupby(1):
     dup = aln[1].isin(df[0]).sum() - tp
     output.append(dict([
         ("method", "${method_label}"),
+        ("random_seed", "${random_seed}"),
         ("depth", d),
         ("true_positive", tp),
         ("false_negative", fn),
@@ -58,6 +66,6 @@ for d, df in ref_abund.groupby(1):
     ]))
 
 output = pd.DataFrame(output)
-output.to_csv("${output_name}.accuracy.tsv", sep="\t", index=None)
+output.to_csv("${method_label}.${random_seed}.accuracy.tsv", sep="\t", index=None)
 
 END
