@@ -18,7 +18,7 @@ for line in open("${genome_abund_csv}", "rt"):
     if "," not in line:
         continue
 
-    url, depth = line.rstrip("\n").split(",", 1)
+    url, depth = line.rstrip("\\n").split(",", 1)
 
     depth = float(depth)
     acc = url.split("/")[-1]
@@ -28,8 +28,8 @@ for line in open("${genome_abund_csv}", "rt"):
 
     for header, seq in SimpleFastaParser(gzip.open(genes_fp, "rt")):
         header = header.split(" ")[0].split("\t")[0]
-        fastq.write(">" + header + '\n' + seq + '\n')
-        abund.write(str(header) + ',' + str(depth) + '\n')
+        fastq.write(">" + header + '\\n' + seq + '\\n')
+        abund.write(str(header) + ',' + str(depth) + '\\n')
 
 fastq.close()
 abund.close()
