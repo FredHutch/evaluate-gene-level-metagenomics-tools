@@ -2,14 +2,13 @@
 
 genome_list_f = file(params.genome_list)
 params.genome_list_sep = ","
-params.num_metagenomes = 10
-params.num_genomes = 10
+params.num_metagenomes = 2
+params.num_genomes = 2
 params.mean_depth = 5
-params.max_depth = 20
+params.max_depth = 2
 params.log_std = 2
-params.random_seed = 1
 
-metagenome_seed_ch = Channel.from( 0..params.num_metagenomes)
+metagenome_seed_ch = Channel.from( 1..params.num_metagenomes)
 
 process pick_genome_abundances {
 
