@@ -38,7 +38,7 @@ process download_genomes {
 
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 1
-    memory "4 GB"
+    memory "1 GB"
 
     input:
     file genome_abund_csv
