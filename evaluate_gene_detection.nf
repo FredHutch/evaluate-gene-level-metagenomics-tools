@@ -44,6 +44,10 @@ process pick_genome_abundances {
 
 }
 
+//
+// DOWNLOAD GENOMES FOR SIMULATION
+//
+
 process download_genomes {
 
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
@@ -61,6 +65,10 @@ process download_genomes {
     template "download_genomes.sh"
 
 }
+
+//
+// SIMULATE READS FROM DOWNLOADED GENOMES
+//
 
 process simulate_genomes {
     container "quay.io/biocontainers/art@sha256:14f44c1cf099f6b55922aaa177c926c993733dba75ef4eb4dcf53442e3b5f96e"
@@ -81,6 +89,10 @@ process simulate_genomes {
     template "simulate_genomes.sh"
 }
 
+//
+// INTERLEAVE THE READS FROM EACH SIMULATED GENOME
+//
+
 process interleave_fastqs {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 1
@@ -90,12 +102,16 @@ process interleave_fastqs {
     file all_reads_tar
 
     output:
-    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades
+    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit
 
     script:
     template "interleave_fastq.sh"
 
 }
+
+//
+// CALCULATE THE ABUNDANCES OF EACH INDIVIDUAL GENE IN THE SIMULATION
+//
 
 process make_gene_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
@@ -139,6 +155,10 @@ process plass {
     """
 }
 
+//
+// CLEAN UP THE HEADERS OF THE PLASS OUTPUT
+//
+
 process plass_clean_headers {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 1
@@ -153,6 +173,10 @@ process plass_clean_headers {
     script:
     template "make_unique_fasta_headers.sh"
 }
+
+//
+// CLUSTER THE PLASS GENES
+//
 
 process plass_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
@@ -174,7 +198,7 @@ process plass_cluster {
 }
 
 //
-// CLUSTER THE REFERENCE SEQUENCES
+// CLUSTER THE REFERENCE GENES
 //
 
 process ref_cluster {
@@ -196,6 +220,10 @@ process ref_cluster {
 
 }
 
+//
+// CALCULATE THE ABUNDANCES OF THE CLUSTERED REFERENCE GENES
+//
+
 process ref_cluster_abund {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 1
@@ -212,6 +240,10 @@ process ref_cluster_abund {
     script:
     template "cluster_abund.sh"
 }
+
+//
+// MAKE A DIAMOND DATABASE FOR THE CLUSTERED REFERENCE GENES
+//
 
 process ref_cluster_dmnd {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
@@ -230,7 +262,7 @@ process ref_cluster_dmnd {
 }
 
 //
-// CALCULATE THE ACCURACY OF PLASS RESULTS
+// ALIGN THE PLASS GENES AGAINST THE REFERENCE GENES
 //
 
 process align_plass_ref {
@@ -256,6 +288,10 @@ process align_plass_ref {
     """
 
 }
+
+//
+// CALCULATE THE ACCURACY OF PLASS RESULTS
+//
 
 process calc_plass_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
@@ -302,6 +338,10 @@ process metaspades {
     """
 }
 
+//
+// GET METASPADES GENES
+//
+
 process metaspades_prokka {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 1
@@ -323,6 +363,10 @@ process metaspades_prokka {
 
 }
 
+//
+// CLUSTER METASPADES GENES
+//
+
 process metaspades_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 1
@@ -341,6 +385,11 @@ process metaspades_cluster {
     template "cluster_proteins.sh"
 
 }
+
+//
+// ALIGN METASPADES GENES AGAINST THE REFERENCE GENES
+//
+
 
 process align_metaspades_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
@@ -366,6 +415,10 @@ process align_metaspades_ref {
 
 }
 
+//
+// CALCULATE ACCURACY OF METASPADES GENES
+//
+
 process calc_metaspades_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
     cpus 1
@@ -377,6 +430,130 @@ process calc_metaspades_acc {
     file aln from metaspades_ref_aln
     file ref_abund from ref_clustered_abund
     val method_label from "metaSPAdes"
+    val random_seed from params.random_seed
+
+    output:
+    file "${method_label}.${random_seed}.accuracy.tsv"
+
+    script:
+    template "calculate_gene_accuracy.sh"
+}
+
+//
+// RUN MEGAHIT
+//
+
+process megahit {
+    container "quay.io/biocontainers/megahit@sha256:8c9f17dd0fb144254e4d6a2a11d46b522239d752d2bd15ae3053bb1a31cc6d01"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file input_fastq from reads_fastq_megahit
+
+    output:
+    file "megahit.contigs.fasta.gz" into megahit_contigs_fasta
+
+    """
+    set -e
+    megahit --12 ${input_fastq} -o TEMP
+    mv TEMP/final.contigs.fa megahit.contigs.fasta
+    gzip megahit.contigs.fasta
+    """
+}
+
+//
+// GET MEGAHIT GENES
+//
+
+process megahit_prokka {
+    container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file input_fasta from megahit_contigs_fasta
+
+    output:
+    file "TEMP/megahit.faa.gz" into megahit_genes_fasta
+
+    """
+    set -e; 
+    
+    gunzip -c ${input_fasta} > input.fasta; 
+    prokka --outdir TEMP --prefix megahit --metagenome input.fasta
+    gzip TEMP/megahit.faa
+    """
+
+}
+
+//
+// CLUSTER MEGAHIT GENES
+//
+
+process megahit_cluster {
+    container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file fasta_in from megahit_genes_fasta
+    val identity from params.identity
+    val overlap from params.overlap
+
+    output:
+    file "${fasta_in}.rep.fasta" into megahit_clustered_faa_for_aln, megahit_clustered_faa_for_acc
+    file "${fasta_in}.clusters.tsv" into megahit_clustered_tsv
+
+    script:
+    template "cluster_proteins.sh"
+
+}
+
+//
+// ALIGN MEGAHIT GENES AGAINST THE REFERENCE GENES
+//
+
+
+process align_megahit_ref {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file db from ref_clustered_genes_dmnd
+    file query from megahit_clustered_faa_for_aln
+    val align_id from params.identity
+    val top_pct from params.top_pct
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+
+    output:
+    file "${query}.${db}.aln.gz" into megahit_ref_aln
+
+    """
+    set -e;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    gzip ${query}.${db}.aln
+    """
+
+}
+
+//
+// CALCULATE ACCURACY OF MEGAHIT GENES
+//
+
+process calc_megahit_acc {
+    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
+    cpus 1
+    memory "1 GB"
+    publishDir params.output_folder
+
+    input:
+    file detected_fasta from megahit_clustered_faa_for_acc
+    file aln from megahit_ref_aln
+    file ref_abund from ref_clustered_abund
+    val method_label from "megahit"
     val random_seed from params.random_seed
 
     output:
