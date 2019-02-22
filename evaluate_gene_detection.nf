@@ -90,7 +90,7 @@ process interleave_fastqs {
     file all_reads_tar
 
     output:
-    file "reads.fastq.gz" into reads_fastq_plass
+    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades
 
     script:
     template "interleave_fastq.sh"
@@ -268,6 +268,115 @@ process calc_plass_acc {
     file aln from plass_ref_aln
     file ref_abund from ref_clustered_abund
     val method_label from "Plass"
+    val random_seed from params.random_seed
+
+    output:
+    file "${method_label}.${random_seed}.accuracy.tsv"
+
+    script:
+    template "calculate_gene_accuracy.sh"
+}
+
+//
+// RUN METASPADES
+//
+
+process metaspades {
+    container "quay.io/biocontainers/spades@sha256:9f097c5d6d7944b68828e10d94504ac49a93bf337a9afed17232594b126b807e"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file input_fastq from reads_fastq_metaspades
+
+    output:
+    file "${input_fastq}.metaspades.fasta.gz" into metaspades_contigs_fasta
+
+    """
+    set -e; 
+
+    spades.py --12 ${input_fastq} -o TEMP --threads 1 --meta --phred-offset 33 --only-assembler;
+    
+    mv TEMP/scaffolds.fasta ${input_fastq}.metaspades.fasta
+    gzip ${input_fastq}.metaspades.fasta
+    """
+}
+
+process metaspades_prokka {
+    container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file input_fasta from metaspades_contigs_fasta
+
+    output:
+    file "TEMP/metaspades.faa.gz" into metaspades_genes_fasta
+
+    """
+    set -e; 
+    
+    gunzip -c ${input_fasta} > input.fasta; 
+    prokka --outdir TEMP --prefix metaspades --metagenome input.fasta
+    gzip TEMP/metaspades.faa
+    """
+
+}
+
+process metaspades_cluster {
+    container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file fasta_in from metaspades_genes_fasta
+    val identity from params.identity
+    val overlap from params.overlap
+
+    output:
+    file "${fasta_in}.rep.fasta" into metaspades_clustered_faa_for_aln, metaspades_clustered_faa_for_acc
+    file "${fasta_in}.clusters.tsv" into metaspades_clustered_tsv
+
+    script:
+    template "cluster_proteins.sh"
+
+}
+
+process align_metaspades_ref {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file db from ref_clustered_genes_dmnd
+    file query from metaspades_clustered_faa_for_aln
+    val align_id from params.identity
+    val top_pct from params.top_pct
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+
+    output:
+    file "${query}.${db}.aln.gz" into metaspades_ref_aln
+
+    """
+    set -e;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    gzip ${query}.${db}.aln
+    """
+
+}
+
+process calc_metaspades_acc {
+    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
+    cpus 1
+    memory "1 GB"
+    publishDir params.output_folder
+
+    input:
+    file detected_fasta from metaspades_clustered_faa_for_acc
+    file aln from metaspades_ref_aln
+    file ref_abund from ref_clustered_abund
+    val method_label from "metaSPAdes"
     val random_seed from params.random_seed
 
     output:
