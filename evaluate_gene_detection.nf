@@ -14,7 +14,6 @@ params.translation_table = 11
 params.min_orf_length = 20
 params.identity = 0.9
 params.overlap = 0.5
-params.top_pct = 0
 params.output_folder = "accuracy_results/"
 
 //
@@ -102,7 +101,7 @@ process interleave_fastqs {
     file all_reads_tar
 
     output:
-    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit
+    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_diamond
 
     script:
     template "interleave_fastq.sh"
@@ -274,7 +273,7 @@ process align_plass_ref {
     file db from ref_clustered_genes_dmnd
     file query from plass_clustered_faa_for_aln
     val align_id from params.identity
-    val top_pct from params.top_pct
+    val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
@@ -400,7 +399,7 @@ process align_metaspades_ref {
     file db from ref_clustered_genes_dmnd
     file query from metaspades_clustered_faa_for_aln
     val align_id from params.identity
-    val top_pct from params.top_pct
+    val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
@@ -514,7 +513,6 @@ process megahit_cluster {
 // ALIGN MEGAHIT GENES AGAINST THE REFERENCE GENES
 //
 
-
 process align_megahit_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 1
@@ -524,7 +522,7 @@ process align_megahit_ref {
     file db from ref_clustered_genes_dmnd
     file query from megahit_clustered_faa_for_aln
     val align_id from params.identity
-    val top_pct from params.top_pct
+    val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
@@ -554,6 +552,152 @@ process calc_megahit_acc {
     file aln from megahit_ref_aln
     file ref_abund from ref_clustered_abund
     val method_label from "megahit"
+    val random_seed from params.random_seed
+
+    output:
+    file "${method_label}.${random_seed}.accuracy.tsv"
+
+    script:
+    template "calculate_gene_accuracy.sh"
+}
+
+//
+// RUN DIAMOND TO ALIGN READS AGAINST REFERENCE PROTEINS
+//
+
+process diamond {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 4
+    memory "8 GB"
+
+    input:
+    file refdb from ref_clustered_genes_dmnd
+    file input_fastq from reads_fastq_diamond
+    val min_id from params.identity
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+    val cpu from 4
+    val min_score from 20
+    val blocks from 5
+    val query_gencode from 11
+
+    output:
+    file "${input_fastq}.${refdb}.aln" into diamond_aln
+
+    """
+    set -e
+    diamond \
+      blastx \
+      --query ${input_fastq} \
+      --out ${input_fastq}.${refdb}.aln \
+      --threads ${cpu} \
+      --db ${refdb} \
+      --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen \
+      --min-score ${min_score} \
+      --query-cover ${query_cover * 100} \
+      --id ${min_id * 100} \
+      --top ${100 - (100 * min_id)} \
+      --block-size ${blocks} \
+      --query-gencode ${query_gencode} \
+      --unal 0    
+    """
+
+}
+
+//
+// RUN FAMLI TO FILTER DIAMOND ALIGNMENTS
+//
+
+process famli {
+    container "quay.io/fhcrc-microbiome/famli@sha256:25c34c73964f06653234dd7804c3cf5d9cf520bc063723e856dae8b16ba74b0c"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file input_aln from diamond_aln
+    val cpu from 1
+    val batchsize from 50000000
+
+    output:
+    file "${input_aln}.json.gz" into famli_json
+
+    """
+    set -e; 
+    
+    famli \
+      filter \
+      --input ${input_aln} \
+      --output ${input_aln}.json \
+      --threads ${cpu} \
+      --batchsize ${batchsize}
+
+    gzip ${input_aln}.json
+    """
+}
+
+//
+// GET GENES DETECTED BY FAMLI
+//
+
+process famli_genes {
+    container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file json_input from famli_json
+    file fasta_input from ref_clustered_genes_faa
+
+    output:
+    file "${json_input}.faa.gz" into famli_clustered_faa_for_acc, famli_clustered_faa_for_aln
+
+    script:
+    template "extract_detected_genes_famli.sh"
+}
+
+//
+// ALIGN FAMLI GENES AGAINST THE REFERENCE GENES
+//
+
+process align_famli_ref {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file db from ref_clustered_genes_dmnd
+    file query from famli_clustered_faa_for_aln
+    val align_id from params.identity
+    val top_pct from 0
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+
+    output:
+    file "${query}.${db}.aln.gz" into famli_ref_aln
+
+    """
+    set -e;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    gzip ${query}.${db}.aln
+    """
+
+}
+
+//
+// CALCULATE THE ACCURACY OF THE FAMLI RESULTS
+//
+
+process calc_famli_acc {
+    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
+    cpus 1
+    memory "1 GB"
+    publishDir params.output_folder
+
+    input:
+    file detected_fasta from famli_clustered_faa_for_acc
+    file aln from famli_ref_aln
+    file ref_abund from ref_clustered_abund
+    val method_label from "FAMLI"
     val random_seed from params.random_seed
 
     output:
