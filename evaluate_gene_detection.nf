@@ -706,3 +706,75 @@ process calc_famli_acc {
     script:
     template "calculate_gene_accuracy.sh"
 }
+
+//
+// GET THE TOTAL SET OF GENES WITH ANY READ ALIGNING BY DIAMOND
+//
+
+process all_diamond_genes {
+    container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file fasta_in from ref_clustered_genes_faa
+    file aln from diamond_aln
+
+    output:
+    file "${aln}.fasta.gz" into all_diamond_faa_for_acc, all_diamond_faa_for_aln
+
+    script:
+    template "all_diamond_genes.sh"
+}
+
+//
+// ALIGN ALL-DIAMOND GENES AGAINST THE REFERENCE GENES
+//
+
+process align_all_diamond_ref {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 1
+    memory "1 GB"
+
+    input:
+    file db from ref_clustered_genes_dmnd
+    file query from all_diamond_faa_for_aln
+    val align_id from params.identity
+    val top_pct from 0
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+
+    output:
+    file "${query}.${db}.aln.gz" into all_diamond_ref_aln
+
+    """
+    set -e;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    gzip ${query}.${db}.aln
+    """
+
+}
+
+//
+// CALCULATE THE ACCURACY OF THE ALL-DIAMOND RESULTS
+//
+
+process calc_all_diamond_acc {
+    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
+    cpus 1
+    memory "1 GB"
+    publishDir params.output_folder
+
+    input:
+    file detected_fasta from all_diamond_faa_for_acc
+    file aln from all_diamond_ref_aln
+    file ref_abund from ref_clustered_abund
+    val method_label from "all_diamond"
+    val random_seed from params.random_seed
+
+    output:
+    file "${method_label}.${random_seed}.accuracy.tsv"
+
+    script:
+    template "calculate_gene_accuracy.sh"
+}
