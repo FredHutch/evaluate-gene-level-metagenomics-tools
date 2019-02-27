@@ -23,8 +23,8 @@ params.output_folder = "accuracy_results/"
 process pick_genome_abundances {
 
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file genome_list from genome_list_f
@@ -50,8 +50,9 @@ process pick_genome_abundances {
 process download_genomes {
 
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
 
     input:
     file genome_abund_csv from genome_abund_csv_dg
@@ -71,8 +72,8 @@ process download_genomes {
 
 process simulate_genomes {
     container "quay.io/biocontainers/art@sha256:14f44c1cf099f6b55922aaa177c926c993733dba75ef4eb4dcf53442e3b5f96e"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     val read_length from params.read_length
@@ -94,8 +95,8 @@ process simulate_genomes {
 
 process interleave_fastqs {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file all_reads_tar
@@ -114,8 +115,8 @@ process interleave_fastqs {
 
 process make_gene_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file genome_abund_csv from genome_abund_csv_mga
@@ -134,10 +135,10 @@ process make_gene_abundances {
 //
 
 process plass {
-    // container "quay.io/biocontainers/plass@sha256:c771c791ad89d9f2c09720d7e127d5b0e6ee2a35ca7688a1b79c461c116ddd05"
-    container "soedinglab/plass"
-    cpus 1
-    memory "8 GB"
+    container "quay.io/fhcrc-microbiome/plass@sha256:72d2c563a7ed97c20064116656f93edbb7c92d0cce7ee4a9f5189fcbbbcad13f"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
 
     input:
     file input_fastq from reads_fastq_plass
@@ -149,7 +150,7 @@ process plass {
 
     """
     set -e; 
-    plass assemble --use-all-table-starts --min-length ${min_orf_length} --translation-table ${translation_table} "${input_fastq}" "plass.genes.faa" tmp
+    /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --translation-table ${translation_table} "${input_fastq}" "plass.genes.faa" tmp
     gzip plass.genes.faa
     """
 }
@@ -160,8 +161,8 @@ process plass {
 
 process plass_clean_headers {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_input from plass_faa
@@ -179,8 +180,8 @@ process plass_clean_headers {
 
 process plass_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_in from plass_clean_faa
@@ -202,8 +203,8 @@ process plass_cluster {
 
 process ref_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_in from ref_genes_fasta
@@ -225,8 +226,8 @@ process ref_cluster {
 
 process ref_cluster_abund {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file abund_in from gene_abund_csv
@@ -246,8 +247,8 @@ process ref_cluster_abund {
 
 process ref_cluster_dmnd {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta from ref_clustered_genes_faa
@@ -266,8 +267,8 @@ process ref_cluster_dmnd {
 
 process align_plass_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -294,8 +295,8 @@ process align_plass_ref {
 
 process calc_plass_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
     publishDir params.output_folder
 
     input:
@@ -318,8 +319,9 @@ process calc_plass_acc {
 
 process metaspades {
     container "quay.io/biocontainers/spades@sha256:9f097c5d6d7944b68828e10d94504ac49a93bf337a9afed17232594b126b807e"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
 
     input:
     file input_fastq from reads_fastq_metaspades
@@ -343,8 +345,9 @@ process metaspades {
 
 process metaspades_prokka {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
 
     input:
     file input_fasta from metaspades_contigs_fasta
@@ -368,8 +371,8 @@ process metaspades_prokka {
 
 process metaspades_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_in from metaspades_genes_fasta
@@ -392,8 +395,8 @@ process metaspades_cluster {
 
 process align_metaspades_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -420,8 +423,8 @@ process align_metaspades_ref {
 
 process calc_metaspades_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
     publishDir params.output_folder
 
     input:
@@ -444,8 +447,8 @@ process calc_metaspades_acc {
 
 process megahit {
     container "quay.io/biocontainers/megahit@sha256:8c9f17dd0fb144254e4d6a2a11d46b522239d752d2bd15ae3053bb1a31cc6d01"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file input_fastq from reads_fastq_megahit
@@ -457,6 +460,7 @@ process megahit {
     set -e
     megahit --12 ${input_fastq} -o TEMP
     mv TEMP/final.contigs.fa megahit.contigs.fasta
+    [[ -s megahit.contigs.fasta ]]
     gzip megahit.contigs.fasta
     """
 }
@@ -467,8 +471,9 @@ process megahit {
 
 process megahit_prokka {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
 
     input:
     file input_fasta from megahit_contigs_fasta
@@ -492,8 +497,8 @@ process megahit_prokka {
 
 process megahit_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_in from megahit_genes_fasta
@@ -515,8 +520,8 @@ process megahit_cluster {
 
 process align_megahit_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -543,8 +548,8 @@ process align_megahit_ref {
 
 process calc_megahit_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
     publishDir params.output_folder
 
     input:
@@ -567,8 +572,8 @@ process calc_megahit_acc {
 
 process diamond {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 4
-    memory "8 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file refdb from ref_clustered_genes_dmnd
@@ -610,8 +615,8 @@ process diamond {
 
 process famli {
     container "quay.io/fhcrc-microbiome/famli@sha256:25c34c73964f06653234dd7804c3cf5d9cf520bc063723e856dae8b16ba74b0c"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file input_aln from diamond_aln
@@ -641,8 +646,8 @@ process famli {
 
 process famli_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file json_input from famli_json
@@ -661,8 +666,8 @@ process famli_genes {
 
 process align_famli_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -689,8 +694,8 @@ process align_famli_ref {
 
 process calc_famli_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
     publishDir params.output_folder
 
     input:
@@ -713,8 +718,8 @@ process calc_famli_acc {
 
 process all_diamond_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_in from ref_clustered_genes_faa
@@ -733,8 +738,8 @@ process all_diamond_genes {
 
 process align_all_diamond_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -761,8 +766,8 @@ process align_all_diamond_ref {
 
 process calc_all_diamond_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
     publishDir params.output_folder
 
     input:
@@ -785,8 +790,8 @@ process calc_all_diamond_acc {
 
 process unique_diamond_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file fasta_in from ref_clustered_genes_faa
@@ -805,8 +810,8 @@ process unique_diamond_genes {
 
 process align_unique_diamond_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -833,8 +838,8 @@ process align_unique_diamond_ref {
 
 process calc_unique_diamond_acc {
     container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 1
-    memory "1 GB"
+    cpus 16
+    memory "32 GB"
     publishDir params.output_folder
 
     input:
