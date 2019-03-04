@@ -137,7 +137,7 @@ process make_gene_abundances {
 process plass {
     container "quay.io/fhcrc-microbiome/plass@sha256:72d2c563a7ed97c20064116656f93edbb7c92d0cce7ee4a9f5189fcbbbcad13f"
     cpus 16
-    memory "32 GB"
+    memory "122 GB"
     scratch "/scratch"
 
     input:
@@ -163,6 +163,8 @@ process plass_clean_headers {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    cpus 1
+    memory "4 GB"
 
     input:
     file fasta_input from plass_faa
@@ -320,7 +322,7 @@ process calc_plass_acc {
 process metaspades {
     container "quay.io/biocontainers/spades@sha256:9f097c5d6d7944b68828e10d94504ac49a93bf337a9afed17232594b126b807e"
     cpus 16
-    memory "32 GB"
+    memory "122 GB"
     scratch "/scratch"
 
     input:
@@ -448,7 +450,7 @@ process calc_metaspades_acc {
 process megahit {
     container "quay.io/biocontainers/megahit@sha256:8c9f17dd0fb144254e4d6a2a11d46b522239d752d2bd15ae3053bb1a31cc6d01"
     cpus 16
-    memory "32 GB"
+    memory "122 GB"
 
     input:
     file input_fastq from reads_fastq_megahit
