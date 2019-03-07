@@ -52,7 +52,7 @@ abund_list = [
 ]
 
 # Write out to a file
-with open("genome_abund.csv", "wt") as fo:
+with open("genome_abund.${random_seed}.csv", "wt") as fo:
     for k, v in zip(
       all_genomes[:num_genomes],
       abund_list

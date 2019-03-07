@@ -10,8 +10,8 @@ import gzip
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 
 # Write out the gene sequences and the simulated depths
-fastq = gzip.open("genes.fastp.gz", "wt")
-abund = gzip.open("genes_abund.csv.gz", "wt")
+fastq = gzip.open("genes.${random_seed}.fastp.gz", "wt")
+abund = gzip.open("genes_abund.${random_seed}.csv.gz", "wt")
 
 # Read in the depth of sequencing for each genome
 for line in open("${genome_abund_csv}", "rt"):

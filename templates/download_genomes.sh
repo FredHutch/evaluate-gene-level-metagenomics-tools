@@ -28,4 +28,4 @@ cat ${genome_abund_csv} | sed 's/,.*//' | while read url; do
 
 done
 
-tar cvf genomes.tar *.fna.gz *.faa.gz
+tar cvf genomes.${random_seed}.tar *.fna.gz *.faa.gz

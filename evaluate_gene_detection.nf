@@ -36,7 +36,7 @@ process pick_genome_abundances {
     val sep from params.genome_list_sep
 
     output:
-    file "genome_abund.csv" into genome_abund_csv_dg
+    file "genome_abund.${random_seed}.csv" into genome_abund_csv_dg
 
     script:
     template "pick_genome_abundances.sh"
@@ -53,9 +53,11 @@ process download_genomes {
     cpus 16
     memory "32 GB"
     scratch "/scratch"
+    publishDir params.output_folder
 
     input:
     file genome_abund_csv from genome_abund_csv_dg
+    val random_seed from params.random_seed
 
     output:
     file "genomes.tar" into genome_tar_sg, genome_tar_mga
@@ -117,10 +119,12 @@ process make_gene_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    publishDir params.output_folder
 
     input:
     file genome_abund_csv from genome_abund_csv_mga
     file genome_tar from genome_tar_mga
+    val random_seed from params.random_seed
 
     output:
     file "genes_abund.csv.gz" into gene_abund_csv
@@ -334,7 +338,7 @@ process metaspades {
     """
     set -e; 
 
-    spades.py --12 ${input_fastq} -o TEMP --threads 1 --meta --phred-offset 33 --only-assembler;
+    spades.py --12 ${input_fastq} -o TEMP --threads 16 --meta --phred-offset 33 --only-assembler;
     
     mv TEMP/scaffolds.fasta ${input_fastq}.metaspades.fasta
     gzip ${input_fastq}.metaspades.fasta
