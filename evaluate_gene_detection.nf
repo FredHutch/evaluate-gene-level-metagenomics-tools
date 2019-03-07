@@ -1,6 +1,7 @@
 #!/usr/bin/env nextflow
 
 genome_list_f = file(params.genome_list)
+refdb_ch = file(params.refdb)
 params.random_seed = 1
 params.genome_list_sep = ","
 params.num_genomes = 20
@@ -11,7 +12,7 @@ params.read_length = 100
 params.read_mflen = 300
 params.read_sdev = 75
 params.translation_table = 11
-params.min_orf_length = 20
+params.min_orf_length = 30
 params.identity = 0.9
 params.overlap = 0.5
 params.output_folder = "accuracy_results/"
@@ -576,13 +577,32 @@ process calc_megahit_acc {
 // RUN DIAMOND TO ALIGN READS AGAINST REFERENCE PROTEINS
 //
 
+process make_refdb_dmnd {
+    // container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    container "job-definition://diamond_nf:3"
+    cpus 16
+    memory "120 GB"
+    scratch "/scratch"
+    
+    input:
+    file fasta from refdb_ch
+
+    output:
+    file "${fasta}.db.dmnd" into refdb_dmnd
+
+    """
+    diamond makedb --in ${fasta} --db ${fasta}.db.dmnd
+    """
+}
+
 process diamond {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
-    file refdb from ref_clustered_genes_dmnd
+    file refdb from refdb_dmnd
     file input_fastq from reads_fastq_diamond
     val min_id from params.identity
     val query_cover from params.overlap
@@ -623,6 +643,7 @@ process famli {
     container "quay.io/fhcrc-microbiome/famli@sha256:25c34c73964f06653234dd7804c3cf5d9cf520bc063723e856dae8b16ba74b0c"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file input_aln from diamond_aln
@@ -654,10 +675,11 @@ process famli_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file json_input from famli_json
-    file fasta_input from ref_clustered_genes_faa
+    file fasta_input from refdb_ch
 
     output:
     file "${json_input}.faa.gz" into famli_clustered_faa_for_acc, famli_clustered_faa_for_aln
@@ -674,6 +696,7 @@ process align_famli_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -728,7 +751,7 @@ process all_diamond_genes {
     memory "32 GB"
 
     input:
-    file fasta_in from ref_clustered_genes_faa
+    file fasta_in from refdb_ch
     file aln from diamond_aln
 
     output:
@@ -800,7 +823,7 @@ process unique_diamond_genes {
     memory "32 GB"
 
     input:
-    file fasta_in from ref_clustered_genes_faa
+    file fasta_in from refdb_ch
     file aln from diamond_aln
 
     output:
