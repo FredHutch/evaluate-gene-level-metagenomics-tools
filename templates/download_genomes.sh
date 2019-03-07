@@ -15,13 +15,9 @@ cat ${genome_abund_csv} | sed 's/,.*//' | while read url; do
     
     gunzip \$suffix\$ending
 
-    # Try to fetch the proteins, or just annotate the genome
-    wget \$url/\$suffix\$protein_ending && \
-    gunzip \$suffix\$protein_ending && \
-    mv \$suffix\$unzip_ending \$suffix.fna && \
-    mv \$suffix\$protein_unzip_ending \$suffix.faa || \
-    ( prokka --prefix \$suffix --fast --quiet \$suffix\$unzip_ending && \
-    mv \$suffix/* ./ )
+    # Annotate the genome with Prokka
+    prokka --prefix \$suffix --fast --quiet \$suffix\$unzip_ending
+    mv \$suffix/* ./
 
     gzip \$suffix.fna
     gzip \$suffix.faa
