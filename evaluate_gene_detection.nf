@@ -60,8 +60,8 @@ process download_genomes {
     val random_seed from params.random_seed
 
     output:
-    file "genomes.tar" into genome_tar_sg, genome_tar_mga
-    file "genome_abund.csv" into genome_abund_csv_sg, genome_abund_csv_mga
+    file "genomes.${random_seed}.tar" into genome_tar_sg, genome_tar_mga
+    file "genome_abund.${random_seed}.csv" into genome_abund_csv_sg, genome_abund_csv_mga
 
     script:
     template "download_genomes.sh"
@@ -127,8 +127,8 @@ process make_gene_abundances {
     val random_seed from params.random_seed
 
     output:
-    file "genes_abund.csv.gz" into gene_abund_csv
-    file "genes.fastp.gz" into ref_genes_fasta
+    file "genes_abund.${random_seed}.csv.gz" into gene_abund_csv
+    file "genes.${random_seed}.fastp.gz" into ref_genes_fasta
 
     script:
     template "make_gene_abundances.sh"
@@ -154,7 +154,7 @@ process plass {
 
     """
     set -e; 
-    /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --translation-table ${translation_table} "${input_fastq}" "plass.genes.faa" tmp
+    /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --threads 16 --translation-table ${translation_table} "${input_fastq}" "plass.genes.faa" tmp
     gzip plass.genes.faa
     """
 }
@@ -289,7 +289,7 @@ process align_plass_ref {
 
     """
     set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
     gzip ${query}.${db}.aln
     """
 
@@ -417,7 +417,7 @@ process align_metaspades_ref {
 
     """
     set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
     gzip ${query}.${db}.aln
     """
 
@@ -464,7 +464,7 @@ process megahit {
 
     """
     set -e
-    megahit --12 ${input_fastq} -o TEMP
+    megahit --12 ${input_fastq} -o TEMP -t 16
     mv TEMP/final.contigs.fa megahit.contigs.fasta
     [[ -s megahit.contigs.fasta ]]
     gzip megahit.contigs.fasta
@@ -542,7 +542,7 @@ process align_megahit_ref {
 
     """
     set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
     gzip ${query}.${db}.aln
     """
 
@@ -688,7 +688,7 @@ process align_famli_ref {
 
     """
     set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
     gzip ${query}.${db}.aln
     """
 
@@ -760,7 +760,7 @@ process align_all_diamond_ref {
 
     """
     set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
     gzip ${query}.${db}.aln
     """
 
@@ -832,7 +832,7 @@ process align_unique_diamond_ref {
 
     """
     set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 1;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
     gzip ${query}.${db}.aln
     """
 
