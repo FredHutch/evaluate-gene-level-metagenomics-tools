@@ -695,7 +695,7 @@ process famli_genes {
 process align_famli_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
-    memory "32 GB"
+    memory "120 GB"
     scratch "/scratch"
 
     input:
