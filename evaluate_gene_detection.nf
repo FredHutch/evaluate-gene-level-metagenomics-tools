@@ -609,7 +609,7 @@ process diamond {
     val subject_cover from params.overlap
     val cpu from 4
     val min_score from 20
-    val blocks from 5
+    val blocks from 20
     val query_gencode from 11
 
     output:
