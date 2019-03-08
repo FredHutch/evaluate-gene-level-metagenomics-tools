@@ -4,3 +4,6 @@ work/
 accuracy_results/
 *.tsv
 trace.txt*
+*html*
+*dot*
+*/*accuracy.tsv

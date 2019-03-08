@@ -26,6 +26,7 @@ process pick_genome_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file genome_list from genome_list_f
@@ -77,6 +78,7 @@ process simulate_genomes {
     container "quay.io/biocontainers/art@sha256:14f44c1cf099f6b55922aaa177c926c993733dba75ef4eb4dcf53442e3b5f96e"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     val read_length from params.read_length
@@ -100,6 +102,7 @@ process interleave_fastqs {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file all_reads_tar
@@ -120,6 +123,7 @@ process make_gene_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
     publishDir params.output_folder
 
     input:
@@ -170,6 +174,7 @@ process plass_clean_headers {
     memory "32 GB"
     cpus 1
     memory "4 GB"
+    scratch "/scratch"
 
     input:
     file fasta_input from plass_faa
@@ -189,6 +194,7 @@ process plass_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta_in from plass_clean_faa
@@ -212,6 +218,7 @@ process ref_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta_in from ref_genes_fasta
@@ -235,6 +242,7 @@ process ref_cluster_abund {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file abund_in from gene_abund_csv
@@ -256,6 +264,7 @@ process ref_cluster_dmnd {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta from ref_clustered_genes_faa
@@ -276,6 +285,7 @@ process align_plass_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -305,6 +315,7 @@ process calc_plass_acc {
     cpus 16
     memory "32 GB"
     publishDir params.output_folder
+    scratch "/scratch"
 
     input:
     file detected_fasta from plass_clustered_faa_for_acc
@@ -380,6 +391,7 @@ process metaspades_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta_in from metaspades_genes_fasta
@@ -404,6 +416,7 @@ process align_metaspades_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -433,6 +446,7 @@ process calc_metaspades_acc {
     cpus 16
     memory "32 GB"
     publishDir params.output_folder
+    scratch "/scratch"
 
     input:
     file detected_fasta from metaspades_clustered_faa_for_acc
@@ -456,6 +470,7 @@ process megahit {
     container "quay.io/biocontainers/megahit@sha256:8c9f17dd0fb144254e4d6a2a11d46b522239d752d2bd15ae3053bb1a31cc6d01"
     cpus 16
     memory "122 GB"
+    scratch "/scratch"
 
     input:
     file input_fastq from reads_fastq_megahit
@@ -506,6 +521,7 @@ process megahit_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta_in from megahit_genes_fasta
@@ -529,6 +545,7 @@ process align_megahit_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -558,6 +575,7 @@ process calc_megahit_acc {
     cpus 16
     memory "32 GB"
     publishDir params.output_folder
+    scratch "/scratch"
 
     input:
     file detected_fasta from megahit_clustered_faa_for_acc
@@ -598,7 +616,7 @@ process make_refdb_dmnd {
 process diamond {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
-    memory "32 GB"
+    memory "120 GB"
     scratch "/scratch"
 
     input:
@@ -726,6 +744,7 @@ process calc_famli_acc {
     cpus 16
     memory "32 GB"
     publishDir params.output_folder
+    scratch "/scratch"
 
     input:
     file detected_fasta from famli_clustered_faa_for_acc
@@ -749,6 +768,7 @@ process all_diamond_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta_in from refdb_ch
@@ -769,6 +789,7 @@ process align_all_diamond_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -798,6 +819,7 @@ process calc_all_diamond_acc {
     cpus 16
     memory "32 GB"
     publishDir params.output_folder
+    scratch "/scratch"
 
     input:
     file detected_fasta from all_diamond_faa_for_acc
@@ -821,6 +843,7 @@ process unique_diamond_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file fasta_in from refdb_ch
@@ -841,6 +864,7 @@ process align_unique_diamond_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
+    scratch "/scratch"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -870,6 +894,7 @@ process calc_unique_diamond_acc {
     cpus 16
     memory "32 GB"
     publishDir params.output_folder
+    scratch "/scratch"
 
     input:
     file detected_fasta from unique_diamond_faa_for_acc
