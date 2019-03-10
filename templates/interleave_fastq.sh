@@ -13,7 +13,7 @@ for r1 in *1.fq.gz; do
         python << END
 import gzip
 
-with gzip.open("\$r1", "rt") as f1, gzip.open("\$r2", "rt") as f2, open("reads.fastq", "wt") as fo:
+with gzip.open("\$r1", "rt") as f1, gzip.open("\$r2", "rt") as f2, open("reads.fastq", "at") as fo:
     while True:
         line = f1.readline()
         if line.strip() == "":
