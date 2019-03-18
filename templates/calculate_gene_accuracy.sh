@@ -2,7 +2,7 @@
 
 set -e
 
-python << END
+python3 << END
 
 import gzip
 import pandas as pd

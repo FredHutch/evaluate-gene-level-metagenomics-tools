@@ -108,7 +108,7 @@ process interleave_fastqs {
     file all_reads_tar
 
     output:
-    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_diamond
+    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_idba, reads_fastq_diamond, reads_fastq_humann2
 
     script:
     template "interleave_fastq.sh"
@@ -283,9 +283,8 @@ process ref_cluster_dmnd {
 
 process align_plass_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -311,11 +310,10 @@ process align_plass_ref {
 //
 
 process calc_plass_acc {
-    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 16
-    memory "32 GB"
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
     publishDir params.output_folder
-    scratch "/scratch"
 
     input:
     file detected_fasta from plass_clustered_faa_for_acc
@@ -414,9 +412,8 @@ process metaspades_cluster {
 
 process align_metaspades_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -442,11 +439,10 @@ process align_metaspades_ref {
 //
 
 process calc_metaspades_acc {
-    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 16
-    memory "32 GB"
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
     publishDir params.output_folder
-    scratch "/scratch"
 
     input:
     file detected_fasta from metaspades_clustered_faa_for_acc
@@ -543,9 +539,8 @@ process megahit_cluster {
 
 process align_megahit_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -571,17 +566,147 @@ process align_megahit_ref {
 //
 
 process calc_megahit_acc {
-    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 16
-    memory "32 GB"
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
     publishDir params.output_folder
-    scratch "/scratch"
 
     input:
     file detected_fasta from megahit_clustered_faa_for_acc
     file aln from megahit_ref_aln
     file ref_abund from ref_clustered_abund
     val method_label from "megahit"
+    val random_seed from params.random_seed
+
+    output:
+    file "${method_label}.${random_seed}.accuracy.tsv"
+
+    script:
+    template "calculate_gene_accuracy.sh"
+}
+
+//
+// RUN IDBA-UD
+//
+
+process idba {
+    // container "quay.io/biocontainers/idba@sha256:51291ffeeecc6afab8d56bf33dffd0c2cb5e24d8a545a5ea93bb795d6af12fa0"
+    container "job-definition://idba_nf:1"
+    cpus 16
+    memory "122 GB"
+    scratch "/scratch"
+
+    input:
+    file input_fastq from reads_fastq_idba
+
+    output:
+    file "idba.scaffold.fasta.gz" into idba_contigs_fasta
+
+    """
+    set -e
+    fq2fa --paired --filter <(gunzip -c ${input_fastq}) ${input_fastq}.fa
+    idba_ud --num_threads 16 -r ${input_fastq}.fa -o TEMP
+    mv TEMP/scaffold.fa idba.scaffold.fasta
+    [[ -s idba.scaffold.fasta ]]
+    gzip idba.scaffold.fasta
+    """
+}
+
+//
+// GET IDBA GENES
+//
+
+process idba_prokka {
+    // container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
+    container "job-definition://prokka_nf:3"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
+
+    input:
+    file input_fasta from idba_contigs_fasta
+
+    output:
+    file "TEMP/idba.faa.gz" into idba_genes_fasta
+
+    """
+    set -e; 
+    
+    gunzip -c ${input_fasta} > input.fasta; 
+    prokka --outdir TEMP --prefix idba --metagenome input.fasta
+    gzip TEMP/idba.faa
+    """
+
+}
+
+//
+// CLUSTER IDBA GENES
+//
+
+process idba_cluster {
+    // container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
+    container "job-definition://mmseqs2_nf:3"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
+
+    input:
+    file fasta_in from idba_genes_fasta
+    val identity from params.identity
+    val overlap from params.overlap
+
+    output:
+    file "${fasta_in}.rep.fasta" into idba_clustered_faa_for_aln, idba_clustered_faa_for_acc
+    file "${fasta_in}.clusters.tsv" into idba_clustered_tsv
+
+    script:
+    template "cluster_proteins.sh"
+
+}
+
+//
+// ALIGN IDBA GENES AGAINST THE REFERENCE GENES
+//
+
+process align_idba_ref {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 4
+    memory "8 GB"
+
+    input:
+    file db from ref_clustered_genes_dmnd
+    file query from idba_clustered_faa_for_aln
+    val align_id from params.identity
+    val top_pct from 0
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+
+    output:
+    file "${query}.${db}.aln.gz" into idba_ref_aln
+
+    """
+    set -e;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
+    gzip ${query}.${db}.aln
+    """
+
+}
+
+//
+// CALCULATE ACCURACY OF IDBA GENES
+//
+
+process calc_idba_acc {
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
+    publishDir params.output_folder
+
+    input:
+    file detected_fasta from idba_clustered_faa_for_acc
+    file aln from idba_ref_aln
+    file ref_abund from ref_clustered_abund
+    val method_label from "IDBA"
     val random_seed from params.random_seed
 
     output:
@@ -712,9 +837,8 @@ process famli_genes {
 
 process align_famli_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 16
-    memory "120 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -740,11 +864,10 @@ process align_famli_ref {
 //
 
 process calc_famli_acc {
-    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 16
-    memory "32 GB"
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
     publishDir params.output_folder
-    scratch "/scratch"
 
     input:
     file detected_fasta from famli_clustered_faa_for_acc
@@ -787,9 +910,8 @@ process all_diamond_genes {
 
 process align_all_diamond_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -815,11 +937,10 @@ process align_all_diamond_ref {
 //
 
 process calc_all_diamond_acc {
-    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 16
-    memory "32 GB"
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
     publishDir params.output_folder
-    scratch "/scratch"
 
     input:
     file detected_fasta from all_diamond_faa_for_acc
@@ -862,9 +983,8 @@ process unique_diamond_genes {
 
 process align_unique_diamond_ref {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
     file db from ref_clustered_genes_dmnd
@@ -890,17 +1010,157 @@ process align_unique_diamond_ref {
 //
 
 process calc_unique_diamond_acc {
-    container "amancevice/pandas@sha256:0c517f3aa03ac570e0cebcd2d0854f0604b44b67b7b284e79fe77307153c6f54"
-    cpus 16
-    memory "32 GB"
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
     publishDir params.output_folder
-    scratch "/scratch"
 
     input:
     file detected_fasta from unique_diamond_faa_for_acc
     file aln from unique_diamond_ref_aln
     file ref_abund from ref_clustered_abund
     val method_label from "unique_diamond"
+    val random_seed from params.random_seed
+
+    output:
+    file "${method_label}.${random_seed}.accuracy.tsv"
+
+    script:
+    template "calculate_gene_accuracy.sh"
+}
+
+//
+// MAKE HUMANN2 DATABASE
+
+process humann2_db {
+
+    // container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
+    container "job-definition://humann2_nf:2"
+    cpus 16
+    memory "120 GB"
+    scratch "/scratch"
+
+    output:
+    file "chocophlan/*" into humann2_chocophlan
+    file "uniref90_ec_filtered_diamond/*" into humann2_uniref90
+    
+    """
+    # Download the database
+	humann2_databases --download chocophlan full chocophlan
+	humann2_databases --download uniref uniref90_ec_filtered_diamond uniref90_ec_filtered_diamond
+	"""
+}
+
+//
+// RUN HUMANN2
+//
+
+process humann2 {
+    // container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
+    container "job-definition://humann2_nf:2"
+    cpus 16
+    memory "120 GB"
+    scratch "/scratch"
+
+    input:
+    file fastq from reads_fastq_humann2
+    file chocophlan from humann2_chocophlan
+    file uniref90 from humann2_uniref90
+    
+    output:
+    file "OUTPUT_DIR/${fastq.simpleName}_genefamilies.tsv" into humann2_gene_tsv
+
+    """
+    humann2 \
+    --input ${fastq} \
+    --nucleotide-database ${chocophlan} \
+    --protein-database ${uniref90} \
+    --output OUTPUT_DIR
+    """
+}
+
+//
+// GET HUMANN2 GENES
+//
+
+process extract_humann2_db {
+    // container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
+    container "job-definition://humann2_nf:2"
+    cpus 16
+    memory "32 GB"
+    scratch "/scratch"
+
+    input:
+    file uniref90 from humann2_uniref90
+
+    output:
+    file "humann2_refdb.fasta" into humann2_refdb_fasta
+
+    """
+    diamond getseq -d \$(find . -name "*dmnd") > humann2_refdb.fasta
+    """
+}
+
+process extract_humann2_genes {
+    container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
+    cpus 16
+    memory "32 GB"
+    
+    input:
+    file ref_fasta from humann2_refdb_fasta
+    file gene_tsv from humann2_gene_tsv
+    file chocophlan from humann2_chocophlan
+
+    output:
+    file "humann2.detected.fasta" into humann_faa_for_aln, humann_faa_for_acc
+
+    script:
+    template "extract_detected_genes_humann2.sh"
+}
+
+//
+// ALIGN HUMANN2-DETECTED GENES AGAINST THE REFERENCE GENES
+//
+
+process align_humann2_ref {
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+    cpus 4
+    memory "8 GB"
+    
+    input:
+    file db from ref_clustered_genes_dmnd
+    file query from humann_faa_for_aln
+    val align_id from params.identity
+    val top_pct from 0
+    val query_cover from params.overlap
+    val subject_cover from params.overlap
+
+    output:
+    file "${query}.${db}.aln.gz" into humann2_ref_aln
+
+    """
+    set -e;
+    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
+    gzip ${query}.${db}.aln
+    """
+
+}
+
+//
+// CALCULATE THE ACCURACY OF THE HUMANN2 RESULTS
+//
+
+process calc_humann2_acc {
+    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+    cpus 1
+    memory "2 GB"
+    publishDir params.output_folder
+ 
+    input:
+    file detected_fasta from humann_faa_for_acc
+    file aln from humann2_ref_aln
+    file ref_abund from ref_clustered_abund
+    val method_label from "HUMAnN2"
     val random_seed from params.random_seed
 
     output:
