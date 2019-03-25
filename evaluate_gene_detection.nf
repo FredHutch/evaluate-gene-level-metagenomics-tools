@@ -1,16 +1,16 @@
 #!/usr/bin/env nextflow
 
 genome_list_f = file(params.genome_list)
-refdb_ch = file(params.refdb)
-params.random_seed = 1
+refdb_f = file(params.refdb)
+params.num_simulations = 100
 params.genome_list_sep = ","
 params.num_genomes = 20
 params.mean_depth = 5
-params.max_depth = 50
-params.log_std = 2
-params.read_length = 100
-params.read_mflen = 300
-params.read_sdev = 75
+params.max_depth = 100
+params.log_std = 1
+params.read_length = 250
+params.read_mflen = 1000
+params.read_sdev = 300
 params.translation_table = 11
 params.min_orf_length = 30
 params.identity = 0.9
@@ -145,8 +145,8 @@ process make_gene_abundances {
 
 process plass {
     container "quay.io/fhcrc-microbiome/plass@sha256:72d2c563a7ed97c20064116656f93edbb7c92d0cce7ee4a9f5189fcbbbcad13f"
-    cpus 16
-    memory "122 GB"
+    cpus 32
+    memory "240 GB"
     scratch "/scratch"
 
     input:
@@ -170,8 +170,6 @@ process plass {
 
 process plass_clean_headers {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 16
-    memory "32 GB"
     cpus 1
     memory "4 GB"
     scratch "/scratch"
@@ -590,8 +588,7 @@ process calc_megahit_acc {
 //
 
 process idba {
-    // container "quay.io/biocontainers/idba@sha256:51291ffeeecc6afab8d56bf33dffd0c2cb5e24d8a545a5ea93bb795d6af12fa0"
-    container "job-definition://idba_nf:1"
+    container "quay.io/biocontainers/idba@sha256:51291ffeeecc6afab8d56bf33dffd0c2cb5e24d8a545a5ea93bb795d6af12fa0"
     cpus 16
     memory "122 GB"
     scratch "/scratch"
@@ -617,8 +614,7 @@ process idba {
 //
 
 process idba_prokka {
-    // container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
-    container "job-definition://prokka_nf:3"
+    container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 16
     memory "32 GB"
     scratch "/scratch"
@@ -644,8 +640,7 @@ process idba_prokka {
 //
 
 process idba_cluster {
-    // container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
-    container "job-definition://mmseqs2_nf:3"
+    container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
     scratch "/scratch"
@@ -721,14 +716,13 @@ process calc_idba_acc {
 //
 
 process make_refdb_dmnd {
-    // container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    container "job-definition://diamond_nf:3"
+    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "120 GB"
     scratch "/scratch"
     
     input:
-    file fasta from refdb_ch
+    file fasta from refdb_f
 
     output:
     file "${fasta}.db.dmnd" into refdb_dmnd
@@ -785,7 +779,7 @@ process diamond {
 process famli {
     container "quay.io/fhcrc-microbiome/famli@sha256:25c34c73964f06653234dd7804c3cf5d9cf520bc063723e856dae8b16ba74b0c"
     cpus 16
-    memory "32 GB"
+    memory "120 GB"
     scratch "/scratch"
 
     input:
@@ -822,7 +816,7 @@ process famli_genes {
 
     input:
     file json_input from famli_json
-    file fasta_input from refdb_ch
+    file fasta_input from refdb_f
 
     output:
     file "${json_input}.faa.gz" into famli_clustered_faa_for_acc, famli_clustered_faa_for_aln
@@ -894,7 +888,7 @@ process all_diamond_genes {
     scratch "/scratch"
 
     input:
-    file fasta_in from refdb_ch
+    file fasta_in from refdb_f
     file aln from diamond_aln
 
     output:
@@ -967,7 +961,7 @@ process unique_diamond_genes {
     scratch "/scratch"
 
     input:
-    file fasta_in from refdb_ch
+    file fasta_in from refdb_f
     file aln from diamond_aln
 
     output:
@@ -1034,8 +1028,7 @@ process calc_unique_diamond_acc {
 
 process humann2_db {
 
-    // container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
-    container "job-definition://humann2_nf:2"
+    container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "120 GB"
     scratch "/scratch"
@@ -1056,8 +1049,7 @@ process humann2_db {
 //
 
 process humann2 {
-    // container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
-    container "job-definition://humann2_nf:2"
+    container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "120 GB"
     scratch "/scratch"
@@ -1084,8 +1076,7 @@ process humann2 {
 //
 
 process extract_humann2_db {
-    // container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
-    container "job-definition://humann2_nf:2"
+    container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "32 GB"
     scratch "/scratch"
