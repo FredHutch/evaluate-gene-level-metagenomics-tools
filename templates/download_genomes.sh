@@ -7,7 +7,7 @@ unzip_ending="_genomic.fna"
 protein_ending="_protein.faa.gz"
 protein_unzip_ending="_protein.faa"
 
-cat ${genome_abund_csv} | sed 's/,.*//' | while read url; do
+cat genome_abund.${ix}.csv | sed 's/,.*//' | while read url; do
     suffix="\$(echo \$url | sed 's/.*\\///')"
 
     # Fetch the genome
@@ -24,4 +24,4 @@ cat ${genome_abund_csv} | sed 's/,.*//' | while read url; do
 
 done
 
-tar cvf genomes.${random_seed}.tar *.fna.gz *.faa.gz
+tar cvf genomes.${ix}.tar *.fna.gz *.faa.gz

@@ -45,7 +45,7 @@ output = []
 
 output.append(dict([
     ("method", "${method_label}"),
-    ("random_seed", "${random_seed}"),
+    ("random_seed", "${ix}"),
     ("depth", "all"),
     ("false_positive", len(detected_genes) - aln[0].isin(detected_genes).sum())
 ]))
@@ -58,7 +58,7 @@ for d, df in ref_abund.groupby(1):
     dup = aln[1].isin(df[0]).sum() - tp
     output.append(dict([
         ("method", "${method_label}"),
-        ("random_seed", "${random_seed}"),
+        ("random_seed", "${ix}"),
         ("depth", d),
         ("true_positive", tp),
         ("false_negative", fn),
@@ -66,6 +66,6 @@ for d, df in ref_abund.groupby(1):
     ]))
 
 output = pd.DataFrame(output)
-output.to_csv("${method_label}.${random_seed}.accuracy.tsv", sep="\t", index=None)
+output.to_csv("${method_label}.${ix}.accuracy.tsv", sep="\t", index=None)
 
 END

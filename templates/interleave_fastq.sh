@@ -2,7 +2,7 @@
 
 set -e;
 
-tar xvf "${all_reads_tar}"
+tar xvf "all_reads.${ix}.tar"
 
 for r1 in *1.fq.gz; do
 
@@ -13,7 +13,7 @@ for r1 in *1.fq.gz; do
         python << END
 import gzip
 
-with gzip.open("\$r1", "rt") as f1, gzip.open("\$r2", "rt") as f2, open("reads.fastq", "at") as fo:
+with gzip.open("\$r1", "rt") as f1, gzip.open("\$r2", "rt") as f2, open("reads.${ix}.fastq", "at") as fo:
     while True:
         line = f1.readline()
         if line.strip() == "":
@@ -33,4 +33,4 @@ END
 
 done
 
-gzip reads.fastq
+gzip reads.${ix}.fastq

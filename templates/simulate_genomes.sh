@@ -2,9 +2,9 @@
 
 set -e;
 
-tar xvf "${genome_tar}"
+tar xvf genomes.${ix}.tar
 
-cat "${genome_abund_csv}" | tr ',' '\t' | while read url depth; do
+cat genome_abund.${ix}.csv | tr ',' '\t' | while read url depth; do
     acc="\$(echo \$url | sed 's/.*\\///')"
     [[ -s \$acc.fna.gz ]] || ( echo "Can't find \$acc.fna.gz" && break )
 
@@ -15,4 +15,4 @@ cat "${genome_abund_csv}" | tr ',' '\t' | while read url depth; do
 
 done
 
-tar cvf all_reads.tar *.fq.gz
+tar cvf all_reads.${ix}.tar *.fq.gz

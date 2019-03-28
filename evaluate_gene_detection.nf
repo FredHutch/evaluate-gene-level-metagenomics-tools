@@ -17,6 +17,9 @@ params.identity = 0.9
 params.overlap = 0.5
 params.output_folder = "accuracy_results/"
 
+// Make a channel with the index for each simulation
+simulation_index_ch = Channel.from( 1..params.num_simulations )
+
 //
 // SIMULATE MOCK COMMUNITIES
 //
@@ -24,9 +27,8 @@ params.output_folder = "accuracy_results/"
 process pick_genome_abundances {
 
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 1
+    memory "1 GB"
 
     input:
     file genome_list from genome_list_f
@@ -34,11 +36,11 @@ process pick_genome_abundances {
     val mean_depth from params.mean_depth
     val max_depth from params.max_depth
     val log_std from params.log_std
-    val random_seed from params.random_seed
+    val ix from simulation_index_ch
     val sep from params.genome_list_sep
 
     output:
-    file "genome_abund.${random_seed}.csv" into genome_abund_csv_dg
+    set ix, "genome_abund.${ix}.csv" into genome_abund_csv_dg
 
     script:
     template "pick_genome_abundances.sh"
@@ -52,18 +54,15 @@ process pick_genome_abundances {
 process download_genomes {
 
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
     publishDir params.output_folder
 
     input:
-    file genome_abund_csv from genome_abund_csv_dg
-    val random_seed from params.random_seed
+    set ix, "genome_abund.${ix}.csv" from genome_abund_csv_dg
 
     output:
-    file "genomes.${random_seed}.tar" into genome_tar_sg, genome_tar_mga
-    file "genome_abund.${random_seed}.csv" into genome_abund_csv_sg, genome_abund_csv_mga
+    set ix, "genome_abund.${ix}.csv", "genomes.${ix}.tar" into genome_tar_sg, genome_tar_mga
 
     script:
     template "download_genomes.sh"
@@ -75,20 +74,19 @@ process download_genomes {
 //
 
 process simulate_genomes {
-    container "quay.io/biocontainers/art@sha256:14f44c1cf099f6b55922aaa177c926c993733dba75ef4eb4dcf53442e3b5f96e"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    container "quay.io/biocontainers/art@sha256:1cd93ed9f680318812a9b19b6187e24c8a63e14cd0fd0202844bc46a8d9ed2b2"
+    cpus 4
+    memory "8 GB"
+    errorStrategy 'retry'
 
     input:
     val read_length from params.read_length
     val mflen from params.read_mflen
     val sdev from params.read_sdev
-    file genome_abund_csv from genome_abund_csv_sg
-    file genome_tar from genome_tar_sg
+    set ix, "genome_abund.${ix}.csv", "genomes.${ix}.tar" from genome_tar_sg
 
     output:
-    file "all_reads.tar" into all_reads_tar
+    set ix, "all_reads.${ix}.tar" into all_reads_tar
 
     script:
     template "simulate_genomes.sh"
@@ -100,15 +98,14 @@ process simulate_genomes {
 
 process interleave_fastqs {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 4
+    memory "8 GB"
 
     input:
-    file all_reads_tar
+    set ix, "all_reads.${ix}.tar" from all_reads_tar
 
     output:
-    file "reads.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_idba, reads_fastq_diamond, reads_fastq_humann2
+    set ix, "reads.${ix}.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_idba, reads_fastq_diamond, reads_fastq_humann2
 
     script:
     template "interleave_fastq.sh"
@@ -121,19 +118,16 @@ process interleave_fastqs {
 
 process make_gene_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 16
-    memory "32 GB"
-    scratch "/scratch"
+    cpus 1
+    memory "1 GB"
     publishDir params.output_folder
 
     input:
-    file genome_abund_csv from genome_abund_csv_mga
-    file genome_tar from genome_tar_mga
-    val random_seed from params.random_seed
-
+    set ix, "genome_abund.${ix}.csv", "genomes.${ix}.tar" from genome_tar_mga
+    
     output:
-    file "genes_abund.${random_seed}.csv.gz" into gene_abund_csv
-    file "genes.${random_seed}.fastp.gz" into ref_genes_fasta
+    set ix, "genes_abund.${ix}.csv.gz" into gene_abund_csv
+    set ix, "genes.${ix}.fastp.gz" into ref_genes_fasta
 
     script:
     template "make_gene_abundances.sh"
@@ -147,20 +141,19 @@ process plass {
     container "quay.io/fhcrc-microbiome/plass@sha256:72d2c563a7ed97c20064116656f93edbb7c92d0cce7ee4a9f5189fcbbbcad13f"
     cpus 32
     memory "240 GB"
-    scratch "/scratch"
 
     input:
-    file input_fastq from reads_fastq_plass
+    set ix, file(fastq_in) from reads_fastq_plass
     val translation_table from params.translation_table
     val min_orf_length from params.min_orf_length
 
     output:
-    file "plass.genes.faa.gz" into plass_faa
+    set ix, "plass.${ix}.genes.faa.gz" into plass_faa
 
     """
     set -e; 
-    /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --threads 16 --translation-table ${translation_table} "${input_fastq}" "plass.genes.faa" tmp
-    gzip plass.genes.faa
+    /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --threads 16 --translation-table ${translation_table} "${fastq_in}" "plass.${ix}.genes.faa" tmp
+    gzip plass.${ix}.genes.faa
     """
 }
 
@@ -172,13 +165,12 @@ process plass_clean_headers {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 1
     memory "4 GB"
-    scratch "/scratch"
 
     input:
-    file fasta_input from plass_faa
-
+    set ix, file(fasta_input) from plass_faa
+    
     output:
-    file "${fasta_input}.clean.fasta.gz" into plass_clean_faa
+    set ix, "${fasta_input}.clean.fasta.gz" into plass_clean_faa
 
     script:
     template "make_unique_fasta_headers.sh"
@@ -192,16 +184,15 @@ process plass_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file fasta_in from plass_clean_faa
+    set ix, file(fasta_in) from plass_clean_faa
     val identity from params.identity
     val overlap from params.overlap
 
     output:
-    file "${fasta_in}.rep.fasta" into plass_clustered_faa_for_aln, plass_clustered_faa_for_acc
-    file "${fasta_in}.clusters.tsv" into plass_clustered_tsv
+    set ix, "${fasta_in}.rep.fasta" into plass_clustered_faa_for_aln, plass_clustered_faa_for_acc
+    set ix, "${fasta_in}.clusters.tsv" into plass_clustered_tsv
 
     script:
     template "cluster_proteins.sh"
@@ -216,16 +207,15 @@ process ref_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file fasta_in from ref_genes_fasta
+    set ix, file(fasta_in) from ref_genes_fasta
     val identity from params.identity
     val overlap from params.overlap
 
     output:
-    file "${fasta_in}.rep.fasta" into ref_clustered_genes_faa
-    file "${fasta_in}.clusters.tsv" into ref_clustered_genes_tsv
+    set ix, "${fasta_in}.rep.fasta" into ref_clustered_genes_faa
+    set ix, "${fasta_in}.clusters.tsv" into ref_clustered_genes_tsv
 
     script:
     template "cluster_proteins.sh"
@@ -240,15 +230,13 @@ process ref_cluster_abund {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file abund_in from gene_abund_csv
-    file groups from ref_clustered_genes_tsv
+    set ix, file(abund_in), file(groups) from gene_abund_csv.join(ref_clustered_genes_tsv)
     val identity from params.identity
 
     output:
-    file "${abund_in}.clust.${identity}.csv" into ref_clustered_abund
+    set ix, "${abund_in}.clust.${identity}.csv" into ref_clustered_abund_metaspades, ref_clustered_abund_megahit, ref_clustered_abund_idba, ref_clustered_abund_plass, ref_clustered_abund_unique_diamond, ref_clustered_abund_all_diamond, ref_clustered_abund_famli, ref_clustered_abund_humann2
 
     script:
     template "cluster_abund.sh"
@@ -262,13 +250,12 @@ process ref_cluster_dmnd {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file fasta from ref_clustered_genes_faa
+    set ix, file(fasta) from ref_clustered_genes_faa
 
     output:
-    file "${fasta}.db.dmnd" into ref_clustered_genes_dmnd
+    set ix, "${fasta}.db.dmnd" into ref_clustered_genes_dmnd_plass, ref_clustered_genes_dmnd_metaspades, ref_clustered_genes_dmnd_megahit, ref_clustered_genes_dmnd_idba, ref_clustered_genes_dmnd_famli, ref_clustered_genes_dmnd_all_diamond, ref_clustered_genes_dmnd_unique_diamond, ref_clustered_genes_dmnd_humann2
 
     """
     diamond makedb --in ${fasta} --db ${fasta}.db.dmnd
@@ -285,15 +272,14 @@ process align_plass_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from plass_clustered_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_plass.join(plass_clustered_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into plass_ref_aln
+    set ix, "${query}.${db}.aln.gz" into plass_ref_aln
 
     """
     set -e;
@@ -314,14 +300,11 @@ process calc_plass_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from plass_clustered_faa_for_acc
-    file aln from plass_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from plass_clustered_faa_for_acc.join(plass_ref_aln).join(ref_clustered_abund_plass)
     val method_label from "Plass"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -335,13 +318,12 @@ process metaspades {
     container "quay.io/biocontainers/spades@sha256:9f097c5d6d7944b68828e10d94504ac49a93bf337a9afed17232594b126b807e"
     cpus 16
     memory "122 GB"
-    scratch "/scratch"
 
     input:
-    file input_fastq from reads_fastq_metaspades
+    set ix, file(input_fastq) from reads_fastq_metaspades
 
     output:
-    file "${input_fastq}.metaspades.fasta.gz" into metaspades_contigs_fasta
+    set ix, "${input_fastq}.metaspades.fasta.gz" into metaspades_contigs_fasta
 
     """
     set -e; 
@@ -361,20 +343,19 @@ process metaspades_prokka {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file input_fasta from metaspades_contigs_fasta
+    set ix, file(input_fasta) from metaspades_contigs_fasta
 
     output:
-    file "TEMP/metaspades.faa.gz" into metaspades_genes_fasta
+    set ix, "TEMP/metaspades.${ix}.faa.gz" into metaspades_genes_fasta
 
     """
     set -e; 
     
     gunzip -c ${input_fasta} > input.fasta; 
-    prokka --outdir TEMP --prefix metaspades --metagenome input.fasta
-    gzip TEMP/metaspades.faa
+    prokka --outdir TEMP --prefix metaspades.${ix} --metagenome input.fasta
+    gzip TEMP/metaspades.${ix}.faa
     """
 
 }
@@ -387,16 +368,15 @@ process metaspades_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file fasta_in from metaspades_genes_fasta
+    set ix, file(fasta_in) from metaspades_genes_fasta
     val identity from params.identity
     val overlap from params.overlap
 
     output:
-    file "${fasta_in}.rep.fasta" into metaspades_clustered_faa_for_aln, metaspades_clustered_faa_for_acc
-    file "${fasta_in}.clusters.tsv" into metaspades_clustered_tsv
+    set ix, "${fasta_in}.rep.fasta" into metaspades_clustered_faa_for_aln, metaspades_clustered_faa_for_acc
+    set ix, "${fasta_in}.clusters.tsv" into metaspades_clustered_tsv
 
     script:
     template "cluster_proteins.sh"
@@ -414,15 +394,14 @@ process align_metaspades_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from metaspades_clustered_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_metaspades.join(metaspades_clustered_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into metaspades_ref_aln
+    set ix, "${query}.${db}.aln.gz" into metaspades_ref_aln
 
     """
     set -e;
@@ -443,14 +422,11 @@ process calc_metaspades_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from metaspades_clustered_faa_for_acc
-    file aln from metaspades_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from metaspades_clustered_faa_for_acc.join(metaspades_ref_aln).join(ref_clustered_abund_metaspades)
     val method_label from "metaSPAdes"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    set ix, "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -464,20 +440,19 @@ process megahit {
     container "quay.io/biocontainers/megahit@sha256:8c9f17dd0fb144254e4d6a2a11d46b522239d752d2bd15ae3053bb1a31cc6d01"
     cpus 16
     memory "122 GB"
-    scratch "/scratch"
 
     input:
-    file input_fastq from reads_fastq_megahit
+    set ix, file(input_fastq) from reads_fastq_megahit
 
     output:
-    file "megahit.contigs.fasta.gz" into megahit_contigs_fasta
+    set ix, "megahit.${ix}.contigs.fasta.gz" into megahit_contigs_fasta
 
     """
     set -e
     megahit --12 ${input_fastq} -o TEMP -t 16
-    mv TEMP/final.contigs.fa megahit.contigs.fasta
-    [[ -s megahit.contigs.fasta ]]
-    gzip megahit.contigs.fasta
+    mv TEMP/final.contigs.fa megahit.${ix}.contigs.fasta
+    [[ -s megahit.${ix}.contigs.fasta ]]
+    gzip megahit.${ix}.contigs.fasta
     """
 }
 
@@ -489,20 +464,19 @@ process megahit_prokka {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file input_fasta from megahit_contigs_fasta
+    set ix, file(input_fasta) from megahit_contigs_fasta
 
     output:
-    file "TEMP/megahit.faa.gz" into megahit_genes_fasta
+    set ix, "TEMP/megahit.${ix}.faa.gz" into megahit_genes_fasta
 
     """
     set -e; 
     
     gunzip -c ${input_fasta} > input.fasta; 
-    prokka --outdir TEMP --prefix megahit --metagenome input.fasta
-    gzip TEMP/megahit.faa
+    prokka --outdir TEMP --prefix megahit.${ix} --metagenome input.fasta
+    gzip TEMP/megahit.${ix}.faa
     """
 
 }
@@ -515,16 +489,15 @@ process megahit_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file fasta_in from megahit_genes_fasta
+    set ix, file(fasta_in) from megahit_genes_fasta
     val identity from params.identity
     val overlap from params.overlap
 
     output:
-    file "${fasta_in}.rep.fasta" into megahit_clustered_faa_for_aln, megahit_clustered_faa_for_acc
-    file "${fasta_in}.clusters.tsv" into megahit_clustered_tsv
+    set ix, "${fasta_in}.rep.fasta" into megahit_clustered_faa_for_aln, megahit_clustered_faa_for_acc
+    set ix, "${fasta_in}.clusters.tsv" into megahit_clustered_tsv
 
     script:
     template "cluster_proteins.sh"
@@ -541,8 +514,7 @@ process align_megahit_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from megahit_clustered_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_megahit.join(megahit_clustered_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
@@ -570,14 +542,11 @@ process calc_megahit_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from megahit_clustered_faa_for_acc
-    file aln from megahit_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from megahit_clustered_faa_for_acc.join(megahit_ref_aln).join(ref_clustered_abund_megahit)
     val method_label from "megahit"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -591,21 +560,20 @@ process idba {
     container "quay.io/biocontainers/idba@sha256:51291ffeeecc6afab8d56bf33dffd0c2cb5e24d8a545a5ea93bb795d6af12fa0"
     cpus 16
     memory "122 GB"
-    scratch "/scratch"
 
     input:
-    file input_fastq from reads_fastq_idba
+    set ix, file(input_fastq) from reads_fastq_idba
 
     output:
-    file "idba.scaffold.fasta.gz" into idba_contigs_fasta
+    set ix, "idba.${ix}.scaffold.fasta.gz" into idba_contigs_fasta
 
     """
     set -e
     fq2fa --paired --filter <(gunzip -c ${input_fastq}) ${input_fastq}.fa
     idba_ud --num_threads 16 -r ${input_fastq}.fa -o TEMP
-    mv TEMP/scaffold.fa idba.scaffold.fasta
-    [[ -s idba.scaffold.fasta ]]
-    gzip idba.scaffold.fasta
+    mv TEMP/scaffold.fa idba.${ix}.scaffold.fasta
+    [[ -s idba.${ix}.scaffold.fasta ]]
+    gzip idba.${ix}.scaffold.fasta
     """
 }
 
@@ -617,20 +585,19 @@ process idba_prokka {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file input_fasta from idba_contigs_fasta
+    set ix, file(input_fasta) from idba_contigs_fasta
 
     output:
-    file "TEMP/idba.faa.gz" into idba_genes_fasta
+    set ix, "TEMP/idba.${ix}.faa.gz" into idba_genes_fasta
 
     """
     set -e; 
     
     gunzip -c ${input_fasta} > input.fasta; 
-    prokka --outdir TEMP --prefix idba --metagenome input.fasta
-    gzip TEMP/idba.faa
+    prokka --outdir TEMP --prefix idba.${ix} --metagenome input.fasta
+    gzip TEMP/idba.${ix}.faa
     """
 
 }
@@ -643,16 +610,15 @@ process idba_cluster {
     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file fasta_in from idba_genes_fasta
+    set ix, file(fasta_in) from idba_genes_fasta
     val identity from params.identity
     val overlap from params.overlap
 
     output:
-    file "${fasta_in}.rep.fasta" into idba_clustered_faa_for_aln, idba_clustered_faa_for_acc
-    file "${fasta_in}.clusters.tsv" into idba_clustered_tsv
+    set ix, "${fasta_in}.rep.fasta" into idba_clustered_faa_for_aln, idba_clustered_faa_for_acc
+    set ix, "${fasta_in}.clusters.tsv" into idba_clustered_tsv
 
     script:
     template "cluster_proteins.sh"
@@ -669,8 +635,7 @@ process align_idba_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from idba_clustered_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_idba.join(idba_clustered_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
@@ -698,14 +663,11 @@ process calc_idba_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from idba_clustered_faa_for_acc
-    file aln from idba_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from idba_clustered_faa_for_acc.join(idba_ref_aln).join(ref_clustered_abund_idba)
     val method_label from "IDBA"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    set ix, "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -719,7 +681,6 @@ process make_refdb_dmnd {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "120 GB"
-    scratch "/scratch"
     
     input:
     file fasta from refdb_f
@@ -736,11 +697,10 @@ process diamond {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "120 GB"
-    scratch "/scratch"
 
     input:
     file refdb from refdb_dmnd
-    file input_fastq from reads_fastq_diamond
+    set ix, file(input_fastq) from reads_fastq_diamond
     val min_id from params.identity
     val query_cover from params.overlap
     val subject_cover from params.overlap
@@ -750,7 +710,7 @@ process diamond {
     val query_gencode from 11
 
     output:
-    file "${input_fastq}.${refdb}.aln" into diamond_aln
+    set ix, "${input_fastq}.${refdb}.aln" into diamond_aln_all, diamond_aln_unique, diamond_aln_famli
 
     """
     set -e
@@ -780,15 +740,14 @@ process famli {
     container "quay.io/fhcrc-microbiome/famli@sha256:25c34c73964f06653234dd7804c3cf5d9cf520bc063723e856dae8b16ba74b0c"
     cpus 16
     memory "120 GB"
-    scratch "/scratch"
 
     input:
-    file input_aln from diamond_aln
+    set ix, file(input_aln) from diamond_aln_famli
     val cpu from 1
     val batchsize from 50000000
 
     output:
-    file "${input_aln}.json.gz" into famli_json
+    set ix, "${input_aln}.json.gz" into famli_json
 
     """
     set -e; 
@@ -812,14 +771,13 @@ process famli_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
-    file json_input from famli_json
+    set ix, file(json_input) from famli_json
     file fasta_input from refdb_f
 
     output:
-    file "${json_input}.faa.gz" into famli_clustered_faa_for_acc, famli_clustered_faa_for_aln
+    set ix, "${json_input}.faa.gz" into famli_clustered_faa_for_acc, famli_clustered_faa_for_aln
 
     script:
     template "extract_detected_genes_famli.sh"
@@ -835,15 +793,14 @@ process align_famli_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from famli_clustered_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_famli.join(famli_clustered_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into famli_ref_aln
+    set ix, "${query}.${db}.aln.gz" into famli_ref_aln
 
     """
     set -e;
@@ -864,14 +821,11 @@ process calc_famli_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from famli_clustered_faa_for_acc
-    file aln from famli_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from famli_clustered_faa_for_acc.join(famli_ref_aln).join(ref_clustered_abund_famli)
     val method_label from "FAMLI"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -885,14 +839,13 @@ process all_diamond_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
     file fasta_in from refdb_f
-    file aln from diamond_aln
+    set ix, file(aln) from diamond_aln_all
 
     output:
-    file "${aln}.fasta.gz" into all_diamond_faa_for_acc, all_diamond_faa_for_aln
+    set ix, "${aln}.fasta.gz" into all_diamond_faa_for_acc, all_diamond_faa_for_aln
 
     script:
     template "all_diamond_genes.sh"
@@ -908,15 +861,14 @@ process align_all_diamond_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from all_diamond_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_all_diamond.join(all_diamond_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into all_diamond_ref_aln
+    set ix, "${query}.${db}.aln.gz" into all_diamond_ref_aln
 
     """
     set -e;
@@ -937,14 +889,11 @@ process calc_all_diamond_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from all_diamond_faa_for_acc
-    file aln from all_diamond_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from all_diamond_faa_for_acc.join(all_diamond_ref_aln).join(ref_clustered_abund_all_diamond)
     val method_label from "all_diamond"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -958,14 +907,13 @@ process unique_diamond_genes {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
     file fasta_in from refdb_f
-    file aln from diamond_aln
+    set ix, file(aln) from diamond_aln_unique
 
     output:
-    file "${aln}.fasta.gz" into unique_diamond_faa_for_acc, unique_diamond_faa_for_aln
+    set ix, "${aln}.fasta.gz" into unique_diamond_faa_for_acc, unique_diamond_faa_for_aln
 
     script:
     template "unique_diamond_genes.sh"
@@ -981,8 +929,7 @@ process align_unique_diamond_ref {
     memory "8 GB"
 
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from unique_diamond_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_unique_diamond.join(unique_diamond_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
@@ -1010,14 +957,11 @@ process calc_unique_diamond_acc {
     publishDir params.output_folder
 
     input:
-    file detected_fasta from unique_diamond_faa_for_acc
-    file aln from unique_diamond_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from unique_diamond_faa_for_acc.join(unique_diamond_ref_aln).join(ref_clustered_abund_unique_diamond)
     val method_label from "unique_diamond"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -1031,7 +975,6 @@ process humann2_db {
     container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "120 GB"
-    scratch "/scratch"
 
     output:
     file "chocophlan/*" into humann2_chocophlan
@@ -1052,15 +995,14 @@ process humann2 {
     container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "120 GB"
-    scratch "/scratch"
 
     input:
-    file fastq from reads_fastq_humann2
+    set ix, file(fastq) from reads_fastq_humann2
     file chocophlan from humann2_chocophlan
     file uniref90 from humann2_uniref90
     
     output:
-    file "OUTPUT_DIR/${fastq.simpleName}_genefamilies.tsv" into humann2_gene_tsv
+    set ix, "OUTPUT_DIR/${fastq.simpleName}.${ix}_genefamilies.tsv" into humann2_gene_tsv
 
     """
     humann2 \
@@ -1068,6 +1010,8 @@ process humann2 {
     --nucleotide-database ${chocophlan} \
     --protein-database ${uniref90} \
     --output OUTPUT_DIR
+
+    rm -r ${chocophlan} ${uniref90}
     """
 }
 
@@ -1079,7 +1023,6 @@ process extract_humann2_db {
     container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "32 GB"
-    scratch "/scratch"
 
     input:
     file uniref90 from humann2_uniref90
@@ -1099,11 +1042,11 @@ process extract_humann2_genes {
     
     input:
     file ref_fasta from humann2_refdb_fasta
-    file gene_tsv from humann2_gene_tsv
+    set ix, file(gene_tsv) from humann2_gene_tsv
     file chocophlan from humann2_chocophlan
 
     output:
-    file "humann2.detected.fasta" into humann_faa_for_aln, humann_faa_for_acc
+    set ix, "humann2.${ix}.detected.fasta" into humann_faa_for_aln, humann_faa_for_acc
 
     script:
     template "extract_detected_genes_humann2.sh"
@@ -1119,15 +1062,14 @@ process align_humann2_ref {
     memory "8 GB"
     
     input:
-    file db from ref_clustered_genes_dmnd
-    file query from humann_faa_for_aln
+    set ix, file(db), file(query) from ref_clustered_genes_dmnd_humann2.join(humann_faa_for_aln)
     val align_id from params.identity
     val top_pct from 0
     val query_cover from params.overlap
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into humann2_ref_aln
+    set ix, "${query}.${db}.aln.gz" into humann2_ref_aln
 
     """
     set -e;
@@ -1148,14 +1090,11 @@ process calc_humann2_acc {
     publishDir params.output_folder
  
     input:
-    file detected_fasta from humann_faa_for_acc
-    file aln from humann2_ref_aln
-    file ref_abund from ref_clustered_abund
+    set ix, file(detected_fasta), file(aln), file(ref_abund) from humann_faa_for_acc.join(humann2_ref_aln).join(ref_clustered_abund_humann2)
     val method_label from "HUMAnN2"
-    val random_seed from params.random_seed
 
     output:
-    file "${method_label}.${random_seed}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"

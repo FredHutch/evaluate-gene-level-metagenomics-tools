@@ -26,7 +26,7 @@ assert len(detected_genes) > 0, "No genes detected in the input"
 
 # Write out the detected genes
 written_genes = set([])
-with open("humann2.detected.fasta", "wt") as fo:
+with open("humann2.${ix}.detected.fasta", "wt") as fo:
 
     # Look through the UniRef database
     with gzip_safe_open("${ref_fasta}", "rt") as fi:

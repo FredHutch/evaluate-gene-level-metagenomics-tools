@@ -3,7 +3,7 @@
 
 set -e;
 
-echo "Using random seed ${random_seed}"
+echo "Simulating index ${ix}"
 
 python << END
 import gzip
@@ -29,7 +29,7 @@ all_genomes = [
   l.rstrip("\\n").split("${sep}")[refseq_ftp_ix]
   for l in f
 ]
-all_genomes = [g for g in all_genomes if len(g) > 1]
+all_genomes = [g for g in all_genomes if len(g) > 1 and g.startswith('ftp://')]
 
 print("There are " + str(len(all_genomes)) + " genomes available")
 assert num_genomes <= len(all_genomes)
@@ -52,7 +52,7 @@ abund_list = [
 ]
 
 # Write out to a file
-with open("genome_abund.${random_seed}.csv", "wt") as fo:
+with open("genome_abund.${ix}.csv", "wt") as fo:
     for k, v in zip(
       all_genomes[:num_genomes],
       abund_list

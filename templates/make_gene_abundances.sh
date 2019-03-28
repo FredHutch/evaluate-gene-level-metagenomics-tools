@@ -2,7 +2,7 @@
 
 set -e;
 
-tar xvf "${genome_tar}"
+tar xvf "genomes.${ix}.tar"
 
 python << END
 import os
@@ -10,11 +10,11 @@ import gzip
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 
 # Write out the gene sequences and the simulated depths
-fastq = gzip.open("genes.${random_seed}.fastp.gz", "wt")
-abund = gzip.open("genes_abund.${random_seed}.csv.gz", "wt")
+fastq = gzip.open("genes.${ix}.fastp.gz", "wt")
+abund = gzip.open("genes_abund.${ix}.csv.gz", "wt")
 
 # Read in the depth of sequencing for each genome
-for line in open("${genome_abund_csv}", "rt"):
+for line in open("genome_abund.${ix}.csv", "rt"):
     if "," not in line:
         continue
 
