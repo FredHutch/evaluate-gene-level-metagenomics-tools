@@ -353,7 +353,7 @@ process metaspades_prokka {
     """
     set -e; 
     
-    gunzip -c ${input_fasta} > input.fasta; 
+    gunzip -c ${input_fasta} | sed 's/_length.*//' > input.fasta; 
     prokka --outdir TEMP --prefix metaspades.${ix} --metagenome input.fasta
     gzip TEMP/metaspades.${ix}.faa
     """
