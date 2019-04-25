@@ -426,7 +426,7 @@ process calc_metaspades_acc {
     val method_label from "metaSPAdes"
 
     output:
-    set ix, "${method_label}.${ix}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
@@ -667,7 +667,7 @@ process calc_idba_acc {
     val method_label from "IDBA"
 
     output:
-    set ix, "${method_label}.${ix}.accuracy.tsv"
+    file "${method_label}.${ix}.accuracy.tsv"
 
     script:
     template "calculate_gene_accuracy.sh"
