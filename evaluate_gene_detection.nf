@@ -141,6 +141,7 @@ process plass {
     container "quay.io/fhcrc-microbiome/plass@sha256:72d2c563a7ed97c20064116656f93edbb7c92d0cce7ee4a9f5189fcbbbcad13f"
     cpus 32
     memory "240 GB"
+    errorStrategy 'retry'
 
     input:
     set ix, file(fastq_in) from reads_fastq_plass
@@ -318,6 +319,7 @@ process metaspades {
     container "quay.io/biocontainers/spades@sha256:9f097c5d6d7944b68828e10d94504ac49a93bf337a9afed17232594b126b807e"
     cpus 16
     memory "122 GB"
+    errorStrategy 'retry'
 
     input:
     set ix, file(input_fastq) from reads_fastq_metaspades
@@ -440,6 +442,7 @@ process megahit {
     container "quay.io/biocontainers/megahit@sha256:8c9f17dd0fb144254e4d6a2a11d46b522239d752d2bd15ae3053bb1a31cc6d01"
     cpus 16
     memory "122 GB"
+    errorStrategy 'retry'
 
     input:
     set ix, file(input_fastq) from reads_fastq_megahit
@@ -560,6 +563,7 @@ process idba {
     container "quay.io/biocontainers/idba@sha256:51291ffeeecc6afab8d56bf33dffd0c2cb5e24d8a545a5ea93bb795d6af12fa0"
     cpus 16
     memory "122 GB"
+    errorStrategy 'retry'
 
     input:
     set ix, file(input_fastq) from reads_fastq_idba
@@ -697,6 +701,7 @@ process diamond {
     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
     cpus 16
     memory "120 GB"
+    errorStrategy 'retry'
 
     input:
     file refdb from refdb_dmnd
@@ -740,6 +745,7 @@ process famli {
     container "quay.io/fhcrc-microbiome/famli@sha256:25c34c73964f06653234dd7804c3cf5d9cf520bc063723e856dae8b16ba74b0c"
     cpus 16
     memory "120 GB"
+    errorStrategy 'retry'
 
     input:
     set ix, file(input_aln) from diamond_aln_famli
@@ -995,6 +1001,7 @@ process humann2 {
     container "quay.io/fhcrc-microbiome/humann2@sha256:d6426bda36ca6a689ea7ddc1fd8c628c6e036d90469234ac1379fa9a4f4d1840"
     cpus 16
     memory "120 GB"
+    errorStrategy 'retry'
 
     input:
     set ix, file(fastq) from reads_fastq_humann2
