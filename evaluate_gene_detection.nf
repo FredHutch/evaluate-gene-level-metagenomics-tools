@@ -56,6 +56,7 @@ process download_genomes {
     container "quay.io/biocontainers/prokka@sha256:6005120724868b80fff0acef388de8c9bfad4917b8817f383703eeacd979aa5a"
     cpus 4
     memory "8 GB"
+    errorStrategy 'retry'
     publishDir params.output_folder
 
     input:
@@ -138,7 +139,7 @@ process make_gene_abundances {
 //
 
 process plass {
-    container "quay.io/fhcrc-microbiome/plass@sha256:72d2c563a7ed97c20064116656f93edbb7c92d0cce7ee4a9f5189fcbbbcad13f"
+    container "quay.io/fhcrc-microbiome/plass@sha256:32651222379970c11094199f14ce44451c77f67681bf195094b8d5c63a20aab3"
     cpus 32
     memory "240 GB"
     errorStrategy 'retry'
