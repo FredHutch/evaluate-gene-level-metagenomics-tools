@@ -525,7 +525,7 @@ process align_megahit_ref {
     val subject_cover from params.overlap
 
     output:
-    set ix, file "${query}.${db}.aln.gz" into megahit_ref_aln
+    set ix, "${query}.${db}.aln.gz" into megahit_ref_aln
 
     """
     set -e;
