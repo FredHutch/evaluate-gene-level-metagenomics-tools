@@ -57,7 +57,7 @@ process download_genomes {
     cpus 4
     memory "8 GB"
     errorStrategy 'retry'
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, "genome_abund.${ix}.csv" from genome_abund_csv_dg
@@ -121,7 +121,7 @@ process make_gene_abundances {
     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
     cpus 1
     memory "1 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, "genome_abund.${ix}.csv", "genomes.${ix}.tar" from genome_tar_mga
@@ -299,7 +299,7 @@ process ref_cluster_dmnd {
 //     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
 //     cpus 1
 //     memory "2 GB"
-//     publishDir params.output_folder
+//     publishDir "${params.output_folder}"
 
 //     input:
 //     set ix, file(detected_fasta), file(aln), file(ref_abund) from plass_clustered_faa_for_acc.join(plass_ref_aln).join(ref_clustered_abund_plass)
@@ -422,7 +422,7 @@ process calc_metaspades_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from metaspades_clustered_faa_for_acc.join(metaspades_ref_aln).join(ref_clustered_abund_metaspades)
@@ -543,7 +543,7 @@ process calc_megahit_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from megahit_clustered_faa_for_acc.join(megahit_ref_aln).join(ref_clustered_abund_megahit)
@@ -665,7 +665,7 @@ process calc_idba_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from idba_clustered_faa_for_acc.join(idba_ref_aln).join(ref_clustered_abund_idba)
@@ -825,7 +825,7 @@ process calc_famli_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from famli_clustered_faa_for_acc.join(famli_ref_aln).join(ref_clustered_abund_famli)
@@ -893,7 +893,7 @@ process calc_all_diamond_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from all_diamond_faa_for_acc.join(all_diamond_ref_aln).join(ref_clustered_abund_all_diamond)
@@ -961,7 +961,7 @@ process calc_unique_diamond_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
 
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from unique_diamond_faa_for_acc.join(unique_diamond_ref_aln).join(ref_clustered_abund_unique_diamond)
@@ -1095,7 +1095,7 @@ process calc_humann2_acc {
     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
     cpus 1
     memory "2 GB"
-    publishDir params.output_folder
+    publishDir "${params.output_folder}"
  
     input:
     set ix, file(detected_fasta), file(aln), file(ref_abund) from humann_faa_for_acc.join(humann2_ref_aln).join(ref_clustered_abund_humann2)
