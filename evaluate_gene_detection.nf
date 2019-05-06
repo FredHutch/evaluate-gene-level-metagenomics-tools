@@ -106,7 +106,7 @@ process interleave_fastqs {
     set ix, "all_reads.${ix}.tar" from all_reads_tar
 
     output:
-    set ix, "reads.${ix}.fastq.gz" into reads_fastq_plass, reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_idba, reads_fastq_diamond, reads_fastq_humann2
+    set ix, "reads.${ix}.fastq.gz" into reads_fastq_metaspades, reads_fastq_megahit, reads_fastq_idba, reads_fastq_diamond, reads_fastq_humann2
 
     script:
     template "interleave_fastq.sh"
@@ -134,72 +134,72 @@ process make_gene_abundances {
     template "make_gene_abundances.sh"
 }
 
-//
-// RUN PLASS
-//
+// //
+// // RUN PLASS
+// //
 
-process plass {
-    container "quay.io/fhcrc-microbiome/plass@sha256:32651222379970c11094199f14ce44451c77f67681bf195094b8d5c63a20aab3"
-    cpus 32
-    memory "240 GB"
-    errorStrategy 'retry'
+// process plass {
+//     container "quay.io/fhcrc-microbiome/plass@sha256:32651222379970c11094199f14ce44451c77f67681bf195094b8d5c63a20aab3"
+//     cpus 32
+//     memory "240 GB"
+//     errorStrategy 'retry'
 
-    input:
-    set ix, file(fastq_in) from reads_fastq_plass
-    val translation_table from params.translation_table
-    val min_orf_length from params.min_orf_length
+//     input:
+//     set ix, file(fastq_in) from reads_fastq_plass
+//     val translation_table from params.translation_table
+//     val min_orf_length from params.min_orf_length
 
-    output:
-    set ix, "plass.${ix}.genes.faa.gz" into plass_faa
+//     output:
+//     set ix, "plass.${ix}.genes.faa.gz" into plass_faa
 
-    """
-    set -e; 
-    /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --threads 16 --translation-table ${translation_table} "${fastq_in}" "plass.${ix}.genes.faa" tmp
-    gzip plass.${ix}.genes.faa
-    """
-}
+//     """
+//     set -e; 
+//     /usr/local/plass/build/bin/plass assemble --use-all-table-starts --min-length ${min_orf_length} --threads 16 --translation-table ${translation_table} "${fastq_in}" "plass.${ix}.genes.faa" tmp
+//     gzip plass.${ix}.genes.faa
+//     """
+// }
 
-//
-// CLEAN UP THE HEADERS OF THE PLASS OUTPUT
-//
+// //
+// // CLEAN UP THE HEADERS OF THE PLASS OUTPUT
+// //
 
-process plass_clean_headers {
-    container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
-    cpus 1
-    memory "4 GB"
+// process plass_clean_headers {
+//     container "quay.io/biocontainers/biopython@sha256:1196016b05927094af161ccf2cd8371aafc2e3a8daa51c51ff023f5eb45a820f"
+//     cpus 1
+//     memory "4 GB"
 
-    input:
-    set ix, file(fasta_input) from plass_faa
+//     input:
+//     set ix, file(fasta_input) from plass_faa
     
-    output:
-    set ix, "${fasta_input}.clean.fasta.gz" into plass_clean_faa
+//     output:
+//     set ix, "${fasta_input}.clean.fasta.gz" into plass_clean_faa
 
-    script:
-    template "make_unique_fasta_headers.sh"
-}
+//     script:
+//     template "make_unique_fasta_headers.sh"
+// }
 
-//
-// CLUSTER THE PLASS GENES
-//
+// //
+// // CLUSTER THE PLASS GENES
+// //
 
-process plass_cluster {
-    container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
-    cpus 16
-    memory "32 GB"
+// process plass_cluster {
+//     container "quay.io/biocontainers/mmseqs2@sha256:f935cdf9a310118ba72ceadd089d2262fc9da76954ebc63bafa3911240f91e06"
+//     cpus 16
+//     memory "32 GB"
 
-    input:
-    set ix, file(fasta_in) from plass_clean_faa
-    val identity from params.identity
-    val overlap from params.overlap
+//     input:
+//     set ix, file(fasta_in) from plass_clean_faa
+//     val identity from params.identity
+//     val overlap from params.overlap
 
-    output:
-    set ix, "${fasta_in}.rep.fasta" into plass_clustered_faa_for_aln, plass_clustered_faa_for_acc
-    set ix, "${fasta_in}.clusters.tsv" into plass_clustered_tsv
+//     output:
+//     set ix, "${fasta_in}.rep.fasta" into plass_clustered_faa_for_aln, plass_clustered_faa_for_acc
+//     set ix, "${fasta_in}.clusters.tsv" into plass_clustered_tsv
 
-    script:
-    template "cluster_proteins.sh"
+//     script:
+//     template "cluster_proteins.sh"
 
-}
+// }
 
 //
 // CLUSTER THE REFERENCE GENES
@@ -238,7 +238,7 @@ process ref_cluster_abund {
     val identity from params.identity
 
     output:
-    set ix, "${abund_in}.clust.${identity}.csv" into ref_clustered_abund_metaspades, ref_clustered_abund_megahit, ref_clustered_abund_idba, ref_clustered_abund_plass, ref_clustered_abund_unique_diamond, ref_clustered_abund_all_diamond, ref_clustered_abund_famli, ref_clustered_abund_humann2
+    set ix, "${abund_in}.clust.${identity}.csv" into ref_clustered_abund_metaspades, ref_clustered_abund_megahit, ref_clustered_abund_idba, ref_clustered_abund_unique_diamond, ref_clustered_abund_all_diamond, ref_clustered_abund_famli, ref_clustered_abund_humann2
 
     script:
     template "cluster_abund.sh"
@@ -257,60 +257,60 @@ process ref_cluster_dmnd {
     set ix, file(fasta) from ref_clustered_genes_faa
 
     output:
-    set ix, "${fasta}.db.dmnd" into ref_clustered_genes_dmnd_plass, ref_clustered_genes_dmnd_metaspades, ref_clustered_genes_dmnd_megahit, ref_clustered_genes_dmnd_idba, ref_clustered_genes_dmnd_famli, ref_clustered_genes_dmnd_all_diamond, ref_clustered_genes_dmnd_unique_diamond, ref_clustered_genes_dmnd_humann2
+    set ix, "${fasta}.db.dmnd" into ref_clustered_genes_dmnd_metaspades, ref_clustered_genes_dmnd_megahit, ref_clustered_genes_dmnd_idba, ref_clustered_genes_dmnd_famli, ref_clustered_genes_dmnd_all_diamond, ref_clustered_genes_dmnd_unique_diamond, ref_clustered_genes_dmnd_humann2
 
     """
     diamond makedb --in ${fasta} --db ${fasta}.db.dmnd
     """
 }
 
-//
-// ALIGN THE PLASS GENES AGAINST THE REFERENCE GENES
-//
+// //
+// // ALIGN THE PLASS GENES AGAINST THE REFERENCE GENES
+// //
 
-process align_plass_ref {
-    container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
-    cpus 4
-    memory "8 GB"
+// process align_plass_ref {
+//     container "quay.io/fhcrc-microbiome/docker-diamond@sha256:0f06003c4190e5a1bf73d806146c1b0a3b0d3276d718a50e920670cf1bb395ed"
+//     cpus 4
+//     memory "8 GB"
 
-    input:
-    set ix, file(db), file(query) from ref_clustered_genes_dmnd_plass.join(plass_clustered_faa_for_aln)
-    val align_id from params.identity
-    val top_pct from 0
-    val query_cover from params.overlap
-    val subject_cover from params.overlap
+//     input:
+//     set ix, file(db), file(query) from ref_clustered_genes_dmnd_plass.join(plass_clustered_faa_for_aln)
+//     val align_id from params.identity
+//     val top_pct from 0
+//     val query_cover from params.overlap
+//     val subject_cover from params.overlap
 
-    output:
-    set ix, "${query}.${db}.aln.gz" into plass_ref_aln
+//     output:
+//     set ix, "${query}.${db}.aln.gz" into plass_ref_aln
 
-    """
-    set -e;
-    diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
-    gzip ${query}.${db}.aln
-    """
+//     """
+//     set -e;
+//     diamond blastp --db ${db} --query ${query} --out ${query}.${db}.aln --outfmt 6 --id ${align_id * 100} --top ${top_pct} --query-cover ${query_cover * 100} --subject-cover ${subject_cover * 100} --threads 16;
+//     gzip ${query}.${db}.aln
+//     """
 
-}
+// }
 
-//
-// CALCULATE THE ACCURACY OF PLASS RESULTS
-//
+// //
+// // CALCULATE THE ACCURACY OF PLASS RESULTS
+// //
 
-process calc_plass_acc {
-    container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
-    cpus 1
-    memory "2 GB"
-    publishDir params.output_folder
+// process calc_plass_acc {
+//     container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+//     cpus 1
+//     memory "2 GB"
+//     publishDir params.output_folder
 
-    input:
-    set ix, file(detected_fasta), file(aln), file(ref_abund) from plass_clustered_faa_for_acc.join(plass_ref_aln).join(ref_clustered_abund_plass)
-    val method_label from "Plass"
+//     input:
+//     set ix, file(detected_fasta), file(aln), file(ref_abund) from plass_clustered_faa_for_acc.join(plass_ref_aln).join(ref_clustered_abund_plass)
+//     val method_label from "Plass"
 
-    output:
-    file "${method_label}.${ix}.accuracy.tsv"
+//     output:
+//     file "${method_label}.${ix}.accuracy.tsv"
 
-    script:
-    template "calculate_gene_accuracy.sh"
-}
+//     script:
+//     template "calculate_gene_accuracy.sh"
+// }
 
 //
 // RUN METASPADES
