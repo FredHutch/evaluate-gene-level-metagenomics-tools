@@ -525,7 +525,7 @@ process align_megahit_ref {
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into megahit_ref_aln
+    set ix, file "${query}.${db}.aln.gz" into megahit_ref_aln
 
     """
     set -e;
@@ -647,7 +647,7 @@ process align_idba_ref {
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into idba_ref_aln
+    set ix, "${query}.${db}.aln.gz" into idba_ref_aln
 
     """
     set -e;
@@ -943,7 +943,7 @@ process align_unique_diamond_ref {
     val subject_cover from params.overlap
 
     output:
-    file "${query}.${db}.aln.gz" into unique_diamond_ref_aln
+    set ix, "${query}.${db}.aln.gz" into unique_diamond_ref_aln
 
     """
     set -e;
